@@ -1,19 +1,22 @@
-import { Button } from "@/components/ui/button";
+import { ModeToggle } from "@/components/ui/mode-toggle";
 import { ContainerTextFlip } from "./components/ui/container-text-flip";
-import { ModeToggle } from "./components/ui/mode-toggle";
-import { StickyBanner } from "./components/ui/sticky-banner";
+import { Nav } from "./components/blocks/nav";
+import { GlowingEffectDemo } from "./components/blocks/glowing-demo";
+import Footer from "./components/blocks/footer";
 
 function App() {
   return (
     <>
-      <StickyBanner className="bg-linear-to-b from-blue-500 to-blue-600">Sticky test</StickyBanner>
+      <Nav />
+
       <div className="flex min-h-svh flex-col items-center justify-center">
+        <GlowingEffectDemo />
         <ModeToggle />
-        <Button>Click me</Button>
         <ContainerTextFlip
           words={["better", "modern", "kewllllll", "awesome"]}
         />
       </div>
+      <Footer />
     </>
   );
 }

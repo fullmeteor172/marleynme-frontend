@@ -1,8 +1,8 @@
 "use client";
 import React, { useState } from "react";
-import type { SVGProps } from "react";
 import { motion, useMotionValueEvent, useScroll } from "motion/react";
 import { cn } from "@/lib/utils";
+import { FiX } from "react-icons/fi";
 
 export const StickyBanner = ({
   className,
@@ -44,27 +44,8 @@ export const StickyBanner = ({
         onClick={() => setOpen(false)}
         className="absolute right-3 top-1/2 -translate-y-1/2 p-1"
       >
-        <CloseIcon className="h-4 w-4 text-white opacity-80 hover:opacity-100 transition" />
+        <FiX className="h-4 w-4 text-white opacity-80 hover:opacity-100 transition" />
       </motion.button>
     </motion.div>
   );
 };
-
-const CloseIcon = (props: SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="20"
-    height="20"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-    <path d="M18 6l-12 12" />
-    <path d="M6 6l12 12" />
-  </svg>
-);
