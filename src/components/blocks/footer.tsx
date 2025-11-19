@@ -65,7 +65,7 @@ const Footer = () => {
 
         <div className="mt-6 flex justify-center text-center">
           <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            © 2025 Marley n Me — Helping pets live happier, healthier lives 🐾
+            © 2025 Marley 'n' Me — Helping pets live happier, healthier lives 🐾
           </p>
         </div>
       </div>

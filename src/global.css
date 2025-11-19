@@ -150,3 +150,13 @@ html {
     }
   }
 }
+
+::selection {
+  background: #f58c0b; /* amber-500 */
+  color: white;
+}
+
+::-moz-selection {
+  background: #f5900b;
+  color: white;
+}

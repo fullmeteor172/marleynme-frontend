@@ -5,7 +5,6 @@ import {
   NavBody,
   NavItems,
   MobileNav,
-  NavbarLogo,
   NavbarButton,
   MobileNavHeader,
   MobileNavToggle,
@@ -18,8 +17,8 @@ import Logo from "@/assets/logo";
 export function Nav({ visible }: { visible?: boolean }) {
   const navItems = [
     { name: "Features", link: "#features" },
-    { name: "Pricing", link: "#pricing" },
-    { name: "Contact", link: "#contact" },
+    { name: "How It Works", link: "#how-it-works" },
+    { name: "Services", link: "#services" },
   ];
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -92,7 +91,7 @@ export function Nav({ visible }: { visible?: boolean }) {
           <a href="#" className="flex items-center gap-3">
             <Logo className="h-9 w-9" />
             <span className="text-lg font-semibold tracking-tight">
-              Marley n Me
+              Marley 'n' Me
             </span>
           </a>
 

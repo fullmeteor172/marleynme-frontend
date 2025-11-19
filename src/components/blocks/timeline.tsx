@@ -42,7 +42,7 @@ const timelineSteps = [
 
 export const Timeline = () => {
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 py-12 md:py-20">
+    <section className="w-full max-w-7xl mx-auto px-4 py-12 md:py-20" id="how-it-works">
       {/* Heading */}
       <div className="flex flex-col mb-12 items-start md:items-center text-left md:text-center">
         <h2 className="text-3xl md:text-5xl font-bold text-foreground tracking-tight">
@@ -114,6 +114,6 @@ export const Timeline = () => {
           })}
         </div>
       </div>
-    </div>
+    </section>
   );
 };
