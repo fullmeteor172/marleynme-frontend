@@ -14,7 +14,7 @@ const Footer = () => {
           <a href="#" className="flex items-center gap-3">
             <Logo className="h-9 w-9" />
             <span className="text-lg font-semibold tracking-tight">
-              Marley n Me
+              Marley 'n' Me
             </span>
           </a>
 
