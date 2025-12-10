@@ -73,6 +73,7 @@ export function OnboardingPage() {
       if (step === 1) {
         if (!data.firstName.trim()) {
           toast.error("Please enter your first name");
+          setIsProcessing(false);
           return;
         }
         await updateProfile.mutateAsync({
@@ -83,6 +84,7 @@ export function OnboardingPage() {
       } else if (step === 2) {
         if (!data.cityId) {
           toast.error("Please select a city");
+          setIsProcessing(false);
           return;
         }
         await updateProfile.mutateAsync({ city_id: data.cityId });
@@ -90,8 +92,10 @@ export function OnboardingPage() {
       } else if (step === 3) {
         if (data.roles.length === 0) {
           toast.error("Please select at least one option");
+          setIsProcessing(false);
           return;
         }
+        // Add all roles sequentially
         for (const role of data.roles) {
           await addRole.mutateAsync(role);
         }
@@ -99,21 +103,26 @@ export function OnboardingPage() {
         if (!data.roles.includes("service_partner")) {
           // Complete onboarding for non-service-partners
           await completeOnboarding.mutateAsync();
-          navigate("/dashboard");
+          // Wait a bit for queries to invalidate and refetch
+          await new Promise(resolve => setTimeout(resolve, 500));
+          navigate("/dashboard", { replace: true });
         } else {
           setStep(4);
         }
       } else if (step === 4) {
         if (!data.phone || data.phone.length !== 10) {
           toast.error("Please enter a valid 10-digit phone number");
+          setIsProcessing(false);
           return;
         }
         await updateProfile.mutateAsync({ phone: `+91${data.phone}` });
         setStep(5);
       } else if (step === 5) {
         // Save service interests if any selected
-        for (const serviceId of data.serviceIds) {
-          await partnerService.addInterest(serviceId);
+        if (data.serviceIds.length > 0) {
+          for (const serviceId of data.serviceIds) {
+            await partnerService.addInterest(serviceId);
+          }
         }
         setStep(6);
       } else if (step === 6) {
@@ -122,7 +131,9 @@ export function OnboardingPage() {
           await updateProfile.mutateAsync({ pincode: data.pincode });
         }
         await completeOnboarding.mutateAsync();
-        navigate("/dashboard");
+        // Wait a bit for queries to invalidate and refetch
+        await new Promise(resolve => setTimeout(resolve, 500));
+        navigate("/dashboard", { replace: true });
       }
     } catch (error) {
       console.error("Onboarding error:", error);
@@ -162,13 +173,12 @@ export function OnboardingPage() {
       <div className="fixed top-0 right-0 p-4 flex items-center gap-3 z-50">
         <ModeToggle />
         <Button
-          variant="ghost"
-          size="sm"
+          variant="outline"
+          size="icon"
           onClick={() => signOut()}
-          className="gap-2"
+          title="Sign Out"
         >
           <LogOut className="w-4 h-4" />
-          Sign Out
         </Button>
       </div>
 
@@ -422,10 +432,11 @@ export function OnboardingPage() {
                   setIsProcessing(true);
                   try {
                     await completeOnboarding.mutateAsync();
-                    navigate("/dashboard");
+                    // Wait a bit for queries to invalidate and refetch
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    navigate("/dashboard", { replace: true });
                   } catch (error) {
                     toast.error("Failed to complete onboarding");
-                  } finally {
                     setIsProcessing(false);
                   }
                 }}

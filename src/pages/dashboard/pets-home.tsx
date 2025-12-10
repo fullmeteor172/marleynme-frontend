@@ -21,6 +21,24 @@ export function PetsHomePage() {
   const { data: pets, isLoading: petsLoading } = usePets();
   const { data: serviceRequests, isLoading: requestsLoading } = useServiceRequests();
 
+  // Generate a color based on the pet's name for the placeholder
+  const getColorFromName = (name: string) => {
+    const colors = [
+      "bg-blue-500",
+      "bg-purple-500",
+      "bg-pink-500",
+      "bg-green-500",
+      "bg-yellow-500",
+      "bg-orange-500",
+      "bg-red-500",
+      "bg-indigo-500",
+      "bg-teal-500",
+      "bg-cyan-500",
+    ];
+    const index = name.charCodeAt(0) % colors.length;
+    return colors[index];
+  };
+
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       pending_assignment: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
@@ -88,39 +106,40 @@ export function PetsHomePage() {
             {pets.map((pet) => (
               <Card
                 key={pet.id}
-                className="cursor-pointer hover:shadow-lg transition-shadow"
+                className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden"
                 onClick={() => navigate(`/dashboard/pets/${pet.id}`)}
               >
-                <CardHeader className="pb-3">
-                  <div className="flex items-start gap-4">
-                    <Avatar className="w-16 h-16">
+                <CardContent className="p-0">
+                  <div className="flex items-center gap-4 p-4">
+                    <Avatar className="w-14 h-14 flex-shrink-0">
                       <AvatarImage src={pet.profile_photo_url || undefined} />
-                      <AvatarFallback>
-                        <PawPrint className="w-8 h-8" />
+                      <AvatarFallback className={`${getColorFromName(pet.name)} text-white`}>
+                        <PawPrint className="w-7 h-7" />
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <CardTitle className="truncate">{pet.name}</CardTitle>
-                      <CardDescription className="text-sm">
+                      <div className="font-semibold truncate text-lg">{pet.name}</div>
+                      <div className="text-sm text-muted-foreground">
                         {pet.sex && (
                           <span className="capitalize">{pet.sex}</span>
                         )}
                         {pet.approx_age_years && (
                           <span>
                             {pet.sex && " • "}
-                            {pet.approx_age_years} years
+                            {pet.approx_age_years}y
                           </span>
                         )}
-                      </CardDescription>
+                        {!pet.sex && !pet.approx_age_years && (
+                          <span>Details not set</span>
+                        )}
+                      </div>
+                      {pet.is_primary_owner && (
+                        <Badge variant="secondary" className="text-xs mt-2">
+                          Primary Owner
+                        </Badge>
+                      )}
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  {pet.is_primary_owner && (
-                    <Badge variant="secondary" className="text-xs">
-                      Primary Owner
-                    </Badge>
-                  )}
                 </CardContent>
               </Card>
             ))}
