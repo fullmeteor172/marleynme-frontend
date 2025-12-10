@@ -11,6 +11,8 @@ import {
   useCompleteOnboarding,
   useCities,
 } from "@/hooks/use-profile";
+import { useServices } from "@/hooks/use-services";
+import { partnerService } from "@/services/partner-service";
 import type { ProfileRole } from "@/types";
 import { useAuthStore } from "@/stores/auth-store";
 import { toast } from "sonner";
@@ -34,17 +36,28 @@ export function OnboardingPage() {
   const profile = useAuthStore((state) => state.profile);
 
   const [step, setStep] = useState<Step>(1);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Helper to strip +91 prefix from phone if present
+  const stripPhonePrefix = (phone: string) => {
+    if (phone.startsWith("+91")) {
+      return phone.substring(3);
+    }
+    return phone;
+  };
+
   const [data, setData] = useState<OnboardingData>({
     firstName: profile?.first_name || "",
     lastName: profile?.last_name || "",
     cityId: profile?.city_id || "",
     roles: [],
-    phone: profile?.phone || "",
+    phone: stripPhonePrefix(profile?.phone || ""),
     pincode: profile?.pincode || "",
     serviceIds: [],
   });
 
   const { data: cities } = useCities();
+  const { data: services } = useServices();
   const updateProfile = useUpdateProfile();
   const addRole = useAddRole();
   const completeOnboarding = useCompleteOnboarding();
@@ -53,37 +66,32 @@ export function OnboardingPage() {
   const progress = (step / totalSteps) * 100;
 
   const handleNext = async () => {
-    if (step === 1) {
-      if (!data.firstName.trim()) {
-        toast.error("Please enter your first name");
-        return;
-      }
-      try {
+    if (isProcessing) return;
+
+    setIsProcessing(true);
+    try {
+      if (step === 1) {
+        if (!data.firstName.trim()) {
+          toast.error("Please enter your first name");
+          return;
+        }
         await updateProfile.mutateAsync({
           first_name: data.firstName,
           last_name: data.lastName || undefined,
         });
         setStep(2);
-      } catch (error) {
-        toast.error("Failed to save. Please try again.");
-      }
-    } else if (step === 2) {
-      if (!data.cityId) {
-        toast.error("Please select a city");
-        return;
-      }
-      try {
+      } else if (step === 2) {
+        if (!data.cityId) {
+          toast.error("Please select a city");
+          return;
+        }
         await updateProfile.mutateAsync({ city_id: data.cityId });
         setStep(3);
-      } catch (error) {
-        toast.error("Failed to save. Please try again.");
-      }
-    } else if (step === 3) {
-      if (data.roles.length === 0) {
-        toast.error("Please select at least one option");
-        return;
-      }
-      try {
+      } else if (step === 3) {
+        if (data.roles.length === 0) {
+          toast.error("Please select at least one option");
+          return;
+        }
         for (const role of data.roles) {
           await addRole.mutateAsync(role);
         }
@@ -95,39 +103,37 @@ export function OnboardingPage() {
         } else {
           setStep(4);
         }
-      } catch (error) {
-        toast.error("Failed to save. Please try again.");
-      }
-    } else if (step === 4) {
-      if (!data.phone || data.phone.length !== 10) {
-        toast.error("Please enter a valid 10-digit phone number");
-        return;
-      }
-      try {
+      } else if (step === 4) {
+        if (!data.phone || data.phone.length !== 10) {
+          toast.error("Please enter a valid 10-digit phone number");
+          return;
+        }
         await updateProfile.mutateAsync({ phone: `+91${data.phone}` });
         setStep(5);
-      } catch (error) {
-        toast.error("Failed to save. Please try again.");
-      }
-    } else if (step === 5) {
-      // Can skip, just move forward
-      setStep(6);
-    } else if (step === 6) {
-      // Can skip pincode
-      try {
+      } else if (step === 5) {
+        // Save service interests if any selected
+        for (const serviceId of data.serviceIds) {
+          await partnerService.addInterest(serviceId);
+        }
+        setStep(6);
+      } else if (step === 6) {
+        // Can skip pincode
         if (data.pincode) {
           await updateProfile.mutateAsync({ pincode: data.pincode });
         }
         await completeOnboarding.mutateAsync();
         navigate("/dashboard");
-      } catch (error) {
-        toast.error("Failed to complete onboarding. Please try again.");
       }
+    } catch (error) {
+      console.error("Onboarding error:", error);
+      toast.error("Failed to save. Please try again.");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const handleBack = () => {
-    if (step > 1) {
+    if (step > 1 && !isProcessing) {
       setStep((step - 1) as Step);
     }
   };
@@ -138,6 +144,15 @@ export function OnboardingPage() {
       roles: prev.roles.includes(role)
         ? prev.roles.filter((r) => r !== role)
         : [...prev.roles, role],
+    }));
+  };
+
+  const toggleService = (serviceId: string) => {
+    setData((prev) => ({
+      ...prev,
+      serviceIds: prev.serviceIds.includes(serviceId)
+        ? prev.serviceIds.filter((id) => id !== serviceId)
+        : [...prev.serviceIds, serviceId],
     }));
   };
 
@@ -158,18 +173,8 @@ export function OnboardingPage() {
       </div>
 
       {/* Progress Bar */}
-      <div className="fixed top-0 left-0 right-0 p-4 z-40">
-        <Progress value={progress} className="h-2" />
-        <div className="flex justify-center mt-2 gap-2">
-          {Array.from({ length: totalSteps }).map((_, i) => (
-            <div
-              key={i}
-              className={`w-2 h-2 rounded-full ${
-                i + 1 <= step ? "bg-primary" : "bg-muted"
-              }`}
-            />
-          ))}
-        </div>
+      <div className="fixed top-0 left-0 right-0 z-40">
+        <Progress value={progress} className="h-1.5" />
       </div>
 
       {/* Content */}
@@ -186,7 +191,7 @@ export function OnboardingPage() {
                   <Label htmlFor="firstName">First Name *</Label>
                   <Input
                     id="firstName"
-                    placeholder="John"
+                    placeholder="Michael"
                     value={data.firstName}
                     onChange={(e) =>
                       setData({ ...data, firstName: e.target.value })
@@ -199,7 +204,7 @@ export function OnboardingPage() {
                   <Label htmlFor="lastName">Last Name</Label>
                   <Input
                     id="lastName"
-                    placeholder="Doe"
+                    placeholder="Jackson"
                     value={data.lastName}
                     onChange={(e) =>
                       setData({ ...data, lastName: e.target.value })
@@ -301,11 +306,12 @@ export function OnboardingPage() {
               <h1 className="text-3xl md:text-4xl font-bold">
                 What's your contact number?
               </h1>
-              <div>
+              <div className="max-w-md">
                 <Label htmlFor="phone">Phone Number *</Label>
                 <div className="flex gap-2 mt-2">
-                  <div className="px-4 py-2 border rounded-md bg-muted">
-                    +91
+                  <div className="flex items-center gap-2 px-3 py-2 border rounded-md bg-muted text-sm font-medium min-w-[80px]">
+                    <span className="text-lg">🇮🇳</span>
+                    <span>+91</span>
                   </div>
                   <Input
                     id="phone"
@@ -336,8 +342,25 @@ export function OnboardingPage() {
               <p className="text-muted-foreground">
                 Select all that apply (you can skip this)
               </p>
-              <div className="text-muted-foreground">
-                Service selection coming soon...
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {services?.map((service) => (
+                  <button
+                    key={service.id}
+                    onClick={() => toggleService(service.id)}
+                    className={`p-4 rounded-lg border-2 transition-all text-left ${
+                      data.serviceIds.includes(service.id)
+                        ? "border-green-600 bg-green-600/10"
+                        : "border-border hover:border-green-600/50"
+                    }`}
+                  >
+                    <div className="font-semibold">{service.name}</div>
+                    {service.description && (
+                      <div className="text-sm text-muted-foreground mt-1">
+                        {service.description}
+                      </div>
+                    )}
+                  </button>
+                ))}
               </div>
             </div>
           )}
@@ -345,11 +368,15 @@ export function OnboardingPage() {
           {/* Step 6: Pincode (Service Partners only) */}
           {step === 6 && (
             <div className="space-y-6">
-              <h1 className="text-3xl md:text-4xl font-bold">
-                What is your pincode?
-              </h1>
-              <p className="text-muted-foreground">Optional</p>
               <div>
+                <h1 className="text-3xl md:text-4xl font-bold">
+                  What is your pincode?
+                </h1>
+                <p className="text-muted-foreground mt-2">
+                  <span className="text-xs uppercase tracking-wide">Optional</span>
+                </p>
+              </div>
+              <div className="max-w-xs">
                 <Label htmlFor="pincode">Pincode</Label>
                 <Input
                   id="pincode"
@@ -362,7 +389,7 @@ export function OnboardingPage() {
                       setData({ ...data, pincode: value });
                     }
                   }}
-                  className="mt-2 max-w-xs"
+                  className="mt-2"
                   maxLength={6}
                   autoFocus
                 />
@@ -378,7 +405,7 @@ export function OnboardingPage() {
           <Button
             variant="ghost"
             onClick={handleBack}
-            disabled={step === 1}
+            disabled={step === 1 || isProcessing}
             className="gap-2"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -391,26 +418,27 @@ export function OnboardingPage() {
               <Button
                 variant="outline"
                 onClick={async () => {
+                  if (isProcessing) return;
+                  setIsProcessing(true);
                   try {
                     await completeOnboarding.mutateAsync();
                     navigate("/dashboard");
                   } catch (error) {
                     toast.error("Failed to complete onboarding");
+                  } finally {
+                    setIsProcessing(false);
                   }
                 }}
+                disabled={isProcessing}
               >
                 Skip
               </Button>
             )}
             <Button
               onClick={handleNext}
-              disabled={
-                updateProfile.isPending ||
-                addRole.isPending ||
-                completeOnboarding.isPending
-              }
+              disabled={isProcessing}
             >
-              {step === totalSteps ? "Complete" : "Next"}
+              {isProcessing ? "Saving..." : step === totalSteps ? "Complete" : "Next"}
             </Button>
           </div>
         </div>

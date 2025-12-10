@@ -7,6 +7,7 @@ import { AuthCallbackPage } from './pages/auth-callback';
 import { OnboardingPage } from './pages/onboarding';
 import { DashboardLayout } from './pages/dashboard/layout';
 import { PetsHomePage } from './pages/dashboard/pets-home';
+import { AddPetPage } from './pages/dashboard/add-pet';
 import { AdoptionCenterPage } from './pages/dashboard/adoption';
 import { PartnerPortalPage } from './pages/dashboard/partner';
 import { AdminPortalPage } from './pages/dashboard/admin';
@@ -54,6 +55,7 @@ function App() {
             >
               <Route index element={<Navigate to="/dashboard/pets" replace />} />
               <Route path="pets" element={<PetsHomePage />} />
+              <Route path="pets/add" element={<AddPetPage />} />
               <Route path="adoption" element={<AdoptionCenterPage />} />
               <Route path="partner" element={<PartnerPortalPage />} />
               <Route path="admin" element={<AdminPortalPage />} />
