@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { ModeToggle } from "@/components/ui/mode-toggle";
 import { useAuthStore } from "@/stores/auth-store";
 import { useNavigate } from "react-router-dom";
 import {
@@ -41,6 +42,7 @@ import { useState } from "react";
 export function DashboardLayout() {
   const { user, profile, signOut } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const [showContactDialog, setShowContactDialog] = useState(false);
 
   const roles = profile?.roles || [];
@@ -55,8 +57,8 @@ export function DashboardLayout() {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
-        <Sidebar>
-          <SidebarHeader className="border-b p-4">
+        <Sidebar collapsible="icon">
+          <SidebarHeader className="border-b px-4 h-[57px] flex items-center">
             <div className="flex items-center gap-3">
               <Logo className="h-8 w-8" />
               <span className="text-lg font-semibold">Marley 'n' Me</span>
@@ -70,23 +72,32 @@ export function DashboardLayout() {
               <SidebarGroupContent>
                 <SidebarMenu>
                   <SidebarMenuItem>
-                    <SidebarMenuButton onClick={() => navigate("/dashboard/pets")}>
-                      <Home className="w-4 h-4" />
+                    <SidebarMenuButton
+                      onClick={() => navigate("/dashboard/pets")}
+                      isActive={location.pathname.startsWith("/dashboard/pets")}
+                    >
+                      <Home className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                       <span>Your Pets Home</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
 
                   <SidebarMenuItem>
-                    <SidebarMenuButton onClick={() => navigate("/dashboard/adoption")}>
-                      <Heart className="w-4 h-4" />
+                    <SidebarMenuButton
+                      onClick={() => navigate("/dashboard/adoption")}
+                      isActive={location.pathname === "/dashboard/adoption"}
+                    >
+                      <Heart className="w-4 h-4 text-pink-600 dark:text-pink-400" />
                       <span>Adoption Center</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
 
                   {isPartner && (
                     <SidebarMenuItem>
-                      <SidebarMenuButton onClick={() => navigate("/dashboard/partner")}>
-                        <Briefcase className="w-4 h-4" />
+                      <SidebarMenuButton
+                        onClick={() => navigate("/dashboard/partner")}
+                        isActive={location.pathname === "/dashboard/partner"}
+                      >
+                        <Briefcase className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                         <span>Partner Portal</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -94,8 +105,11 @@ export function DashboardLayout() {
 
                   {isAdmin && (
                     <SidebarMenuItem>
-                      <SidebarMenuButton onClick={() => navigate("/dashboard/admin")}>
-                        <Shield className="w-4 h-4" />
+                      <SidebarMenuButton
+                        onClick={() => navigate("/dashboard/admin")}
+                        isActive={location.pathname === "/dashboard/admin"}
+                      >
+                        <Shield className="w-4 h-4 text-red-600 dark:text-red-400" />
                         <span>Admin Portal</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -110,22 +124,28 @@ export function DashboardLayout() {
               <SidebarGroupContent>
                 <SidebarMenu>
                   <SidebarMenuItem>
-                    <SidebarMenuButton onClick={() => navigate("/dashboard/profile")}>
-                      <User className="w-4 h-4" />
+                    <SidebarMenuButton
+                      onClick={() => navigate("/dashboard/profile")}
+                      isActive={location.pathname === "/dashboard/profile"}
+                    >
+                      <User className="w-4 h-4 text-green-600 dark:text-green-400" />
                       <span>User Profile</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
 
                   <SidebarMenuItem>
-                    <SidebarMenuButton onClick={() => navigate("/dashboard/addresses")}>
-                      <MapPin className="w-4 h-4" />
+                    <SidebarMenuButton
+                      onClick={() => navigate("/dashboard/addresses")}
+                      isActive={location.pathname === "/dashboard/addresses"}
+                    >
+                      <MapPin className="w-4 h-4 text-orange-600 dark:text-orange-400" />
                       <span>Address Book</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
 
                   <SidebarMenuItem>
                     <SidebarMenuButton disabled>
-                      <FileText className="w-4 h-4" />
+                      <FileText className="w-4 h-4 text-gray-400" />
                       <span>Billing & Invoices</span>
                       <span className="ml-auto text-xs text-muted-foreground">
                         Soon
@@ -142,7 +162,7 @@ export function DashboardLayout() {
                 <SidebarMenu>
                   <SidebarMenuItem>
                     <SidebarMenuButton onClick={() => setShowContactDialog(true)}>
-                      <Phone className="w-4 h-4" />
+                      <Phone className="w-4 h-4 text-teal-600 dark:text-teal-400" />
                       <span>Contact Us</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -178,8 +198,9 @@ export function DashboardLayout() {
         </Sidebar>
 
         <main className="flex-1 overflow-auto">
-          <div className="sticky top-0 z-10 bg-background border-b p-4">
+          <div className="sticky top-0 z-10 bg-background border-b p-4 flex items-center justify-between">
             <SidebarTrigger />
+            <ModeToggle />
           </div>
           <div className="p-6">
             <Outlet />
