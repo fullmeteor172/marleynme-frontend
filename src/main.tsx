@@ -5,9 +5,9 @@ import App from "./App.tsx";
 import { ThemeProvider } from "./components/theme-provider.tsx";
 
 createRoot(document.getElementById("root")!).render(
-  <ThemeProvider>
-    <StrictMode>
+  <StrictMode>
+    <ThemeProvider>
       <App />
-    </StrictMode>
-  </ThemeProvider>
+    </ThemeProvider>
+  </StrictMode>
 );
