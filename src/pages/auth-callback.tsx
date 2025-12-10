@@ -7,50 +7,54 @@ export function AuthCallbackPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Handle the OAuth callback
-    const handleCallback = async () => {
-      try {
-        // Get the hash from the URL (contains access_token, etc.)
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const accessToken = hashParams.get('access_token');
-        const refreshToken = hashParams.get('refresh_token');
+    // Check for errors in the URL
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const urlParams = new URLSearchParams(window.location.search);
+    const errorDescription = hashParams.get('error_description') || urlParams.get('error_description');
 
-        if (accessToken && refreshToken) {
-          // Set the session with the tokens from the URL
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
+    if (errorDescription) {
+      setError(errorDescription);
+      setTimeout(() => navigate('/'), 3000);
+      return;
+    }
 
-          if (sessionError) {
-            console.error('Session error:', sessionError);
-            setError('Failed to establish session. Please try again.');
-            setTimeout(() => navigate('/'), 3000);
-            return;
-          }
+    // Set up a timeout to prevent infinite waiting
+    const timeout = setTimeout(() => {
+      setError('Authentication timeout. Please try logging in again.');
+      setTimeout(() => navigate('/'), 3000);
+    }, 10000); // 10 second timeout
 
-          // Session is set, now check if user needs onboarding
-          // The AuthProvider and ProtectedRoute will handle the rest
-          console.log('Authentication successful, redirecting...');
-          navigate('/dashboard');
-        } else {
-          // No tokens in URL, might be an error
-          const errorDescription = hashParams.get('error_description');
-          if (errorDescription) {
-            setError(errorDescription);
-          } else {
-            setError('No authentication tokens found. Please try logging in again.');
-          }
-          setTimeout(() => navigate('/'), 3000);
-        }
-      } catch (err) {
-        console.error('Callback error:', err);
-        setError('An error occurred during authentication. Please try again.');
+    // Listen for auth state changes
+    // Supabase v2 automatically exchanges OAuth codes for sessions
+    // and triggers this listener when complete
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state change:', event, session);
+
+      if (event === 'SIGNED_IN' && session) {
+        clearTimeout(timeout);
+        console.log('Authentication successful, redirecting...');
+        navigate('/dashboard');
+      } else if (event === 'SIGNED_OUT') {
+        clearTimeout(timeout);
+        setError('Authentication failed. Please try logging in again.');
         setTimeout(() => navigate('/'), 3000);
       }
-    };
+    });
 
-    handleCallback();
+    // Also check if there's already a session (in case the event already fired)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        clearTimeout(timeout);
+        console.log('Session found, redirecting...');
+        navigate('/dashboard');
+      }
+    });
+
+    // Cleanup
+    return () => {
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   if (error) {
