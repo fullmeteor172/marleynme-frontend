@@ -58,10 +58,10 @@ export function DashboardLayout() {
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
         <Sidebar collapsible="icon">
-          <SidebarHeader className="border-b px-4 h-[57px] flex items-center">
+          <SidebarHeader className="border-b px-4 h-[56px] flex items-center justify-center group-data-[collapsible=icon]:justify-center">
             <div className="flex items-center gap-3">
-              <Logo className="h-8 w-8" />
-              <span className="text-lg font-semibold">Marley 'n' Me</span>
+              <Logo className="h-8 w-8 flex-shrink-0" />
+              <span className="text-lg font-semibold group-data-[collapsible=icon]:hidden">Marley 'n' Me</span>
             </div>
           </SidebarHeader>
 
@@ -172,12 +172,12 @@ export function DashboardLayout() {
           </SidebarContent>
 
           <SidebarFooter className="border-t p-4">
-            <div className="flex items-center gap-3">
-              <Avatar className="h-9 w-9">
+            <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
+              <Avatar className="h-9 w-9 rounded-md group-data-[collapsible=icon]:rounded-md flex-shrink-0">
                 <AvatarImage src={user?.user_metadata?.avatar_url} />
-                <AvatarFallback>{initials}</AvatarFallback>
+                <AvatarFallback className="rounded-md">{initials}</AvatarFallback>
               </Avatar>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
                 <div className="font-medium truncate">
                   {profile?.first_name || "User"} {profile?.last_name || ""}
                 </div>
@@ -190,6 +190,7 @@ export function DashboardLayout() {
                 size="icon"
                 onClick={() => signOut()}
                 title="Sign out"
+                className="group-data-[collapsible=icon]:hidden"
               >
                 <LogOut className="w-4 h-4" />
               </Button>
@@ -198,7 +199,7 @@ export function DashboardLayout() {
         </Sidebar>
 
         <main className="flex-1 overflow-auto">
-          <div className="sticky top-0 z-10 bg-background border-b p-4 flex items-center justify-between">
+          <div className="sticky top-0 z-10 bg-background border-b p-4 h-[56px] flex items-center justify-between">
             <SidebarTrigger />
             <ModeToggle />
           </div>
