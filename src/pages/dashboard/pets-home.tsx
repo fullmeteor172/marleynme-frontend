@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { usePets } from "@/hooks/use-pets";
+import { usePets, useSpecies } from "@/hooks/use-pets";
 import { useServiceRequests } from "@/hooks/use-service-requests";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import { format } from "date-fns";
 export function PetsHomePage() {
   const navigate = useNavigate();
   const { data: pets, isLoading: petsLoading } = usePets();
+  const { data: allSpecies } = useSpecies();
   const { data: serviceRequests, isLoading: requestsLoading } = useServiceRequests();
 
   // Generate a color based on the pet's name for the placeholder
@@ -103,46 +104,55 @@ export function PetsHomePage() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {pets.map((pet) => (
-              <Card
-                key={pet.id}
-                className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden"
-                onClick={() => navigate(`/dashboard/pets/${pet.id}`)}
-              >
-                <CardContent className="p-0">
-                  <div className="flex items-center gap-4 p-4">
-                    <Avatar className="w-14 h-14 flex-shrink-0">
-                      <AvatarImage src={pet.profile_photo_url || undefined} />
-                      <AvatarFallback className={`${getColorFromName(pet.name)} text-white`}>
-                        <PawPrint className="w-7 h-7" />
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold truncate text-lg">{pet.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {pet.sex && (
-                          <span className="capitalize">{pet.sex}</span>
-                        )}
-                        {pet.approx_age_years && (
-                          <span>
-                            {pet.sex && " • "}
-                            {pet.approx_age_years}y
-                          </span>
-                        )}
-                        {!pet.sex && !pet.approx_age_years && (
-                          <span>Details not set</span>
+            {pets.map((pet) => {
+              const speciesName = allSpecies?.find(s => s.id === pet.species_id)?.name;
+              return (
+                <Card
+                  key={pet.id}
+                  className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden"
+                  onClick={() => navigate(`/dashboard/pets/${pet.id}`)}
+                >
+                  <CardContent className="p-0">
+                    <div className="flex items-center gap-4 p-4">
+                      <Avatar className="w-14 h-14 flex-shrink-0">
+                        <AvatarImage src={pet.profile_photo_url || undefined} />
+                        <AvatarFallback className={`${getColorFromName(pet.name)} text-white`}>
+                          <PawPrint className="w-7 h-7" />
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold truncate text-lg">{pet.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {speciesName && (
+                            <span>{speciesName}</span>
+                          )}
+                          {pet.sex && (
+                            <span>
+                              {speciesName && " • "}
+                              <span className="capitalize">{pet.sex}</span>
+                            </span>
+                          )}
+                          {pet.approx_age_years && (
+                            <span>
+                              {(speciesName || pet.sex) && " • "}
+                              {pet.approx_age_years}y
+                            </span>
+                          )}
+                          {!speciesName && !pet.sex && !pet.approx_age_years && (
+                            <span>Details not set</span>
+                          )}
+                        </div>
+                        {pet.is_primary_owner && (
+                          <Badge variant="secondary" className="text-xs mt-2">
+                            Primary Owner
+                          </Badge>
                         )}
                       </div>
-                      {pet.is_primary_owner && (
-                        <Badge variant="secondary" className="text-xs mt-2">
-                          Primary Owner
-                        </Badge>
-                      )}
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>

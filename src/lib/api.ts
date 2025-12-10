@@ -17,6 +17,20 @@ class ApiClient {
     return headers;
   }
 
+  private async handleResponse<T>(response: Response): Promise<T> {
+    if (!response.ok) {
+      // If unauthorized, the session might be expired
+      if (response.status === 401) {
+        console.error('Unauthorized request - session may be expired');
+      }
+
+      const error = await response.json().catch(() => ({ error: 'Request failed' }));
+      throw new Error(error.error || `Request failed with status ${response.status}`);
+    }
+
+    return response.json();
+  }
+
   async get<T>(endpoint: string): Promise<T> {
     const headers = await this.getHeaders();
     const response = await fetch(`${API_BASE_URL}${API_PREFIX}${endpoint}`, {
@@ -24,12 +38,7 @@ class ApiClient {
       headers,
     });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Request failed' }));
-      throw new Error(error.error || `Request failed with status ${response.status}`);
-    }
-
-    return response.json();
+    return this.handleResponse<T>(response);
   }
 
   async post<T>(endpoint: string, data?: unknown): Promise<T> {
@@ -40,12 +49,7 @@ class ApiClient {
       body: data ? JSON.stringify(data) : undefined,
     });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Request failed' }));
-      throw new Error(error.error || `Request failed with status ${response.status}`);
-    }
-
-    return response.json();
+    return this.handleResponse<T>(response);
   }
 
   async patch<T>(endpoint: string, data?: unknown): Promise<T> {
@@ -56,12 +60,7 @@ class ApiClient {
       body: data ? JSON.stringify(data) : undefined,
     });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Request failed' }));
-      throw new Error(error.error || `Request failed with status ${response.status}`);
-    }
-
-    return response.json();
+    return this.handleResponse<T>(response);
   }
 
   async delete<T>(endpoint: string): Promise<T> {
@@ -71,12 +70,7 @@ class ApiClient {
       headers,
     });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Request failed' }));
-      throw new Error(error.error || `Request failed with status ${response.status}`);
-    }
-
-    return response.json();
+    return this.handleResponse<T>(response);
   }
 
   async uploadFile<T>(endpoint: string, file: File, additionalData?: Record<string, string>): Promise<T> {
@@ -101,12 +95,7 @@ class ApiClient {
       body: formData,
     });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Upload failed' }));
-      throw new Error(error.error || `Upload failed with status ${response.status}`);
-    }
-
-    return response.json();
+    return this.handleResponse<T>(response);
   }
 }
 

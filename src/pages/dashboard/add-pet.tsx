@@ -1,17 +1,22 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useCreatePet, useSpecies, useBreeds } from "@/hooks/use-pets";
+import { useCreatePet, useSpecies, useBreeds, usePet, useUpdatePet } from "@/hooks/use-pets";
 import type { PetSex } from "@/types";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
 export function AddPetPage() {
   const navigate = useNavigate();
+  const { petId } = useParams<{ petId: string }>();
+  const isEditMode = !!petId;
+
+  const { data: existingPet, isLoading: petLoading } = usePet(petId || '');
   const createPet = useCreatePet();
+  const updatePet = useUpdatePet(petId || '');
   const { data: species, isLoading: speciesLoading } = useSpecies();
 
   const [formData, setFormData] = useState({
@@ -24,6 +29,20 @@ export function AddPetPage() {
   });
 
   const { data: breeds, isLoading: breedsLoading } = useBreeds(formData.species_id || undefined);
+
+  // Load existing pet data when in edit mode
+  useEffect(() => {
+    if (existingPet && isEditMode) {
+      setFormData({
+        name: existingPet.name || "",
+        species_id: existingPet.species_id || "",
+        breed_id: existingPet.breed_id || "",
+        approx_age_years: existingPet.approx_age_years?.toString() || "",
+        sex: existingPet.sex || "",
+        notes: existingPet.notes || "",
+      });
+    }
+  }, [existingPet, isEditMode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,21 +58,36 @@ export function AddPetPage() {
     }
 
     try {
-      await createPet.mutateAsync({
+      const petData = {
         name: formData.name,
         species_id: formData.species_id,
         breed_id: formData.breed_id || undefined,
         approx_age_years: formData.approx_age_years ? parseFloat(formData.approx_age_years) : undefined,
         sex: formData.sex || undefined,
         notes: formData.notes || undefined,
-      });
+      };
 
-      toast.success("Pet added successfully!");
-      navigate("/dashboard/pets");
+      if (isEditMode) {
+        await updatePet.mutateAsync(petData);
+        toast.success("Pet updated successfully!");
+        navigate(`/dashboard/pets/${petId}`);
+      } else {
+        await createPet.mutateAsync(petData);
+        toast.success("Pet added successfully!");
+        navigate("/dashboard/pets");
+      }
     } catch (error) {
-      toast.error("Failed to add pet. Please try again.");
+      toast.error(`Failed to ${isEditMode ? 'update' : 'add'} pet. Please try again.`);
     }
   };
+
+  if (isEditMode && petLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">Loading pet details...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -61,15 +95,17 @@ export function AddPetPage() {
       <div>
         <Button
           variant="ghost"
-          onClick={() => navigate("/dashboard/pets")}
+          onClick={() => navigate(isEditMode ? `/dashboard/pets/${petId}` : "/dashboard/pets")}
           className="gap-2 mb-4"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Pets
+          {isEditMode ? "Back to Pet Details" : "Back to Pets"}
         </Button>
-        <h1 className="text-3xl font-bold tracking-tight">Add a New Pet</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          {isEditMode ? "Edit Pet" : "Add a New Pet"}
+        </h1>
         <p className="text-muted-foreground mt-1">
-          Tell us about your furry friend
+          {isEditMode ? "Update your pet's information" : "Tell us about your furry friend"}
         </p>
       </div>
 
@@ -222,19 +258,19 @@ export function AddPetPage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => navigate("/dashboard/pets")}
-                disabled={createPet.isPending}
+                onClick={() => navigate(isEditMode ? `/dashboard/pets/${petId}` : "/dashboard/pets")}
+                disabled={createPet.isPending || updatePet.isPending}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={createPet.isPending}>
-                {createPet.isPending ? (
+              <Button type="submit" disabled={createPet.isPending || updatePet.isPending}>
+                {createPet.isPending || updatePet.isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Adding Pet...
+                    {isEditMode ? "Updating..." : "Adding Pet..."}
                   </>
                 ) : (
-                  "Add Pet"
+                  isEditMode ? "Update Pet" : "Add Pet"
                 )}
               </Button>
             </div>

@@ -58,6 +58,7 @@ function App() {
               <Route path="pets" element={<PetsHomePage />} />
               <Route path="pets/add" element={<AddPetPage />} />
               <Route path="pets/:petId" element={<PetDetailPage />} />
+              <Route path="pets/:petId/edit" element={<AddPetPage />} />
               <Route path="adoption" element={<AdoptionCenterPage />} />
               <Route path="partner" element={<PartnerPortalPage />} />
               <Route path="admin" element={<AdminPortalPage />} />

@@ -1,9 +1,20 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { usePet, useDeletePet, useUploadPetAvatar } from "@/hooks/use-pets";
+import { usePet, useDeletePet, useUploadPetAvatar, useSpecies, useBreeds } from "@/hooks/use-pets";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { ArrowLeft, Edit, Trash2, Upload, PawPrint } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useRef } from "react";
@@ -12,17 +23,19 @@ export function PetDetailPage() {
   const { petId } = useParams<{ petId: string }>();
   const navigate = useNavigate();
   const { data: pet, isLoading } = usePet(petId!);
+  const { data: allSpecies } = useSpecies();
+  const { data: allBreeds } = useBreeds(pet?.species_id);
   const deletePet = useDeletePet();
   const uploadAvatar = useUploadPetAvatar(petId!);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Get species and breed names
+  const speciesName = allSpecies?.find(s => s.id === pet?.species_id)?.name || "Not specified";
+  const breedName = allBreeds?.find(b => b.id === pet?.breed_id)?.name || "Not specified";
+
   const handleDelete = async () => {
     if (!petId) return;
-
-    if (!confirm(`Are you sure you want to delete ${pet?.name}? This action cannot be undone.`)) {
-      return;
-    }
 
     setIsDeleting(true);
     try {
@@ -110,19 +123,35 @@ export function PetDetailPage() {
           Back to Pets
         </Button>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/pets/${petId}/edit`)}>
             <Edit className="w-4 h-4" />
             Edit
           </Button>
-          <Button
-            variant="destructive"
-            className="gap-2"
-            onClick={handleDelete}
-            disabled={isDeleting}
-          >
-            <Trash2 className="w-4 h-4" />
-            {isDeleting ? "Deleting..." : "Delete"}
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" className="gap-2" disabled={isDeleting}>
+                <Trash2 className="w-4 h-4" />
+                {isDeleting ? "Deleting..." : "Delete"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete {pet?.name} from your account. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDelete}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 
@@ -172,21 +201,20 @@ export function PetDetailPage() {
         </CardHeader>
       </Card>
 
-      {/* Details Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Basic Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Basic Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      {/* Pet Information */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Pet Information</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <div className="text-sm font-medium text-muted-foreground">Species</div>
-              <div className="mt-1">{pet.species_id || "Not specified"}</div>
+              <div className="mt-1">{speciesName}</div>
             </div>
             <div>
               <div className="text-sm font-medium text-muted-foreground">Breed</div>
-              <div className="mt-1">{pet.breed_id || "Not specified"}</div>
+              <div className="mt-1">{breedName}</div>
             </div>
             <div>
               <div className="text-sm font-medium text-muted-foreground">Sex</div>
@@ -200,16 +228,7 @@ export function PetDetailPage() {
                   : "Not specified"}
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Additional Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Additional Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
+            <div className="md:col-span-2">
               <div className="text-sm font-medium text-muted-foreground">Notes</div>
               <div className="mt-1 whitespace-pre-wrap">
                 {pet.notes || "No notes added"}
@@ -227,9 +246,9 @@ export function PetDetailPage() {
                 {new Date(pet.updated_at).toLocaleDateString()}
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Service History Card */}
       <Card>
