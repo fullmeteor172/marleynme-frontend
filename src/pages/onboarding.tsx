@@ -188,7 +188,7 @@ export function OnboardingPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 flex items-center justify-center px-4 pt-24 pb-8">
+      <div className="flex-1 flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-2xl">
           {/* Step 1: Name */}
           {step === 1 && (
@@ -319,8 +319,28 @@ export function OnboardingPage() {
               <div className="max-w-md">
                 <Label htmlFor="phone">Phone Number *</Label>
                 <div className="flex gap-2 mt-2">
-                  <div className="flex items-center gap-2 px-3 py-2 border rounded-md bg-muted text-sm font-medium min-w-[80px]">
-                    <span className="text-lg">🇮🇳</span>
+                  <div className="flex items-center gap-2 px-3 border rounded-md bg-muted text-sm font-medium h-10">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 24" className="w-6 h-4 flex-shrink-0">
+                      <rect width="36" height="24" fill="#FF9933"/>
+                      <rect width="36" height="16" y="8" fill="#fff"/>
+                      <rect width="36" height="8" y="16" fill="#138808"/>
+                      <circle cx="18" cy="12" r="3" fill="#000080"/>
+                      <circle cx="18" cy="12" r="2.5" fill="transparent" stroke="#000080" strokeWidth="0.4"/>
+                      <g transform="translate(18, 12)">
+                        {[...Array(24)].map((_, i) => (
+                          <line
+                            key={i}
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="-2.5"
+                            stroke="#000080"
+                            strokeWidth="0.15"
+                            transform={`rotate(${i * 15})`}
+                          />
+                        ))}
+                      </g>
+                    </svg>
                     <span>+91</span>
                   </div>
                   <Input

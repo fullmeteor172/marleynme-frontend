@@ -58,7 +58,7 @@ export function DashboardLayout() {
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
         <Sidebar collapsible="icon">
-          <SidebarHeader className="border-b px-4 h-[56px] flex items-center justify-center group-data-[collapsible=icon]:justify-center">
+          <SidebarHeader className="border-b px-4 h-[56px] flex items-center group-data-[collapsible=icon]:justify-center">
             <div className="flex items-center gap-3">
               <Logo className="h-8 w-8 flex-shrink-0" />
               <span className="text-lg font-semibold group-data-[collapsible=icon]:hidden">Marley 'n' Me</span>
@@ -222,16 +222,16 @@ export function DashboardLayout() {
             <div>
               <div className="font-medium">Email</div>
               <a
-                href="mailto:support@marleynme.in"
+                href="mailto:itsmarleynme@gmail.com"
                 className="text-primary hover:underline"
               >
-                support@marleynme.in
+                itsmarleynme@gmail.com
               </a>
             </div>
             <div>
               <div className="font-medium">Phone</div>
-              <a href="tel:+911234567890" className="text-primary hover:underline">
-                +91 123 456 7890
+              <a href="tel:+917993260741" className="text-primary hover:underline">
+                +91 7993260741
               </a>
             </div>
             <div>
