@@ -1,5 +1,7 @@
 import { ContainerTextFlip } from "../ui/container-text-flip";
 import { InteractiveHoverButton } from "../ui/interactive-hover-button";
+import { FloatingGif } from "../ui/floating-gif";
+import jumpingCat from "@/assets/cat-jumping.gif";
 
 const Hero = () => {
   return (
@@ -8,7 +10,6 @@ const Hero = () => {
       className="relative flex items-center justify-center px-4 pt-28 pb-14"
     >
       <div className="max-w-6xl mx-auto w-full text-center">
-
         {/* MOBILE: COMING TO HYDERABAD */}
         <span className="md:hidden block text-sm tracking-wider text-accent-foreground/80 dark:text-accent-foreground/90 font-semibold mb-1">
           COMING TO HYDERABAD
@@ -38,6 +39,7 @@ const Hero = () => {
           />
         </div>
 
+
         {/* Subtext — warmer + shorter */}
         <p className="text-lg md:text-xl text-neutral-600 dark:text-neutral-300 max-w-3xl mx-auto mb-10 leading-relaxed">
           All the help your pet needs, from vets to groomers to walkers -
@@ -46,12 +48,22 @@ const Hero = () => {
 
         {/* Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full">
-          <InteractiveHoverButton
-            variant="primary"
-            className="w-full md:w-auto"
-          >
-            Join the Waitlist
-          </InteractiveHoverButton>
+          <div className="relative w-full md:w-auto">
+            <InteractiveHoverButton
+              variant="primary"
+              className="w-full md:w-auto"
+            >
+              Join the Waitlist
+            </InteractiveHoverButton>
+
+            {/* Cat GIF */}
+            <FloatingGif
+              src={jumpingCat}
+              alt="Jumping cat"
+              size={100} // pick your size here
+              className="absolute -top-22.5 right-10 md:right-10"
+            />
+          </div>
 
           <InteractiveHoverButton
             variant="secondary"

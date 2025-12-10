@@ -200,6 +200,7 @@ export const MobileNavMenu = ({
     <AnimatePresence>
       {isOpen && (
         <motion.div
+          onClick={onClose}
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
@@ -284,8 +285,25 @@ export const NavbarButton = ({
       "shadow-[0_0_24px_rgba(34,_42,_53,_0.06),_0_1px_1px_rgba(0,_0,_0,_0.05),_0_0_0_1px_rgba(34,_42,_53,_0.04),_0_0_4px_rgba(34,_42,_53,_0.08),_0_16px_68px_rgba(47,_48,_55,_0.05),_0_1px_0_rgba(255,_255,_255,_0.1)_inset]",
     secondary: "bg-transparent shadow-none dark:text-white",
     dark: "bg-black text-white shadow-[0_0_24px_rgba(34,_42,_53,_0.06),_0_1px_1px_rgba(0,_0,_0,_0.05),_0_0_0_1px_rgba(34,_42,_53,_0.04),_0_0_4px_rgba(34,_42,_53,_0.08),_0_16px_68px_rgba(47,_48,_55,_0.05),_0_1px_0_rgba(255,_255,_255,_0.1)_inset]",
-    gradient:
-      "bg-gradient-to-b from-blue-500 to-blue-700 text-white shadow-[0px_2px_0px_0px_rgba(255,255,255,0.3)_inset]",
+    gradient: cn(
+      // Glassy orange gradient
+      "relative overflow-hidden",
+      "bg-gradient-to-b from-orange-400/80 to-orange-600/80",
+      "backdrop-blur-md border border-orange-500/30",
+      "text-white",
+
+      // Inner glossy shine
+      "before:absolute before:inset-0 before:bg-white/10 before:opacity-40 before:rounded-md",
+
+      // Outer glow + elevation
+      "shadow-[0_4px_12px_rgba(255,125,52,0.35),0_0_8px_rgba(255,125,52,0.25)_inset]",
+
+      // Hover effect
+      "hover:from-orange-500/90 hover:to-orange-700/90 hover:shadow-[0_6px_14px_rgba(255,125,52,0.45),0_0_10px_rgba(255,125,52,0.35)_inset] transition-all duration-300",
+
+      // Slight lift
+      "hover:-translate-y-0.5"
+    ),
   };
 
   return (

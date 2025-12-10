@@ -16,7 +16,6 @@ import Logo from "@/assets/logo";
 
 export function Nav({ visible }: { visible?: boolean }) {
   const navItems = [
-    { name: "Features", link: "#features" },
     { name: "How It Works", link: "#how-it-works" },
     { name: "Services", link: "#services" },
   ];
@@ -68,17 +67,16 @@ export function Nav({ visible }: { visible?: boolean }) {
         {/* Right side buttons */}
         <div className="flex items-center gap-4">
           <NavbarButton
-            variant="secondary"
-            className="group relative overflow-hidden"
-          >
-            Login
-          </NavbarButton>
-
-          <NavbarButton
             variant="primary"
             className="group relative overflow-hidden"
           >
             Book a call
+          </NavbarButton>
+          <NavbarButton
+            variant="gradient"
+            className="group relative overflow-hidden"
+          >
+            Join Waitlist
           </NavbarButton>
 
           <ModeToggle />
@@ -119,13 +117,13 @@ export function Nav({ visible }: { visible?: boolean }) {
             </a>
           ))}
 
-          <div className="flex w-full flex-col gap-4 mt-4">
+          <div className="flex w-full flex-col gap-2">
             <NavbarButton
               variant="secondary"
               className="w-full group relative overflow-hidden"
               onClick={() => setTimeout(() => setIsMobileMenuOpen(false), 150)}
             >
-              Login
+              Join Waitlist
             </NavbarButton>
 
             <NavbarButton

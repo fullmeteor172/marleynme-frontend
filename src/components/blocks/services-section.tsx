@@ -2,6 +2,10 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Marquee } from "@/components/ui/marquee";
+import TappingCat from "@/assets/tapping-cat.gif";
+import { FloatingGif } from "@/components/ui/floating-gif";
+import CatGroomingImg from "@/assets/images/dog-being-groomed.webp";
+import CatVaccinationImg from "@/assets/images/cat-being-vaccinated.webp";
 
 import {
   FaScissors,
@@ -27,8 +31,8 @@ const staticServices = [
     id: "grooming",
     type: "wide",
     title: "Pet Grooming",
-    description: "Professional grooming at your home or our studio.",
-    image: "https://placehold.co/300x300?text=Grooming",
+    description: "Professional grooming at your home or our certified studios.",
+    image: CatGroomingImg,
     icon: <FaScissors className="h-5 w-5" />,
     badges: ["At-Home", "On-Site"],
     colorBg: "bg-[#4F9BFF]/20 dark:bg-[#1E3A8A]/15",
@@ -39,7 +43,7 @@ const staticServices = [
     type: "wide",
     title: "At-Home Vaccination",
     description: "Certified vets provide vaccinations in the comfort of home.",
-    image: "https://placehold.co/300x300?text=Vaccination",
+    image: CatVaccinationImg,
     icon: <FaSyringe className="h-5 w-5" />,
     badges: ["At-Home"],
     colorBg: "bg-[#A0E8AF]/20 dark:bg-[#064e3b]/12",
@@ -53,7 +57,7 @@ const staticServices = [
     icon: <FaStethoscope className="h-5 w-5" />,
     colorBg: "bg-[#A0D8FF]/20 dark:bg-[#022c5b]/12",
     colorText: "text-[#0ea5e9] dark:text-[#7dd3fc]",
-    badges: ["At-Home"],
+    badges: ["At-Home", "On-Site"],
   },
   {
     id: "walking",
@@ -63,7 +67,7 @@ const staticServices = [
     icon: <FaPersonWalking className="h-5 w-5" />,
     colorBg: "bg-[#FFD447]/20 dark:bg-[#45350a]/12",
     colorText: "text-[#c08400] dark:text-[#facc15]",
-    badges: ["On-Site"],
+    badges: ["At-Home"],
   },
   {
     id: "sitting",
@@ -94,7 +98,7 @@ const marqueeServices = [
     description: "Safe and secure travel for your pets.",
     image: "https://placehold.co/300x300?text=Transport",
     icon: <FaTruckFast className="h-5 w-5" />,
-    badges: ["On-Site"],
+    badges: ["At-Home", "On-Site"],
     colorBg: "bg-[#FF8B5E]/20 dark:bg-[#4c1d14]/12",
     colorText: "text-[#fb923c] dark:text-[#ffb394]",
   },
@@ -104,7 +108,7 @@ const marqueeServices = [
     description: "Nutrition curated for your pet’s needs.",
     image: "https://placehold.co/300x300?text=Food",
     icon: <FaBone className="h-5 w-5" />,
-    badges: ["On-Site"],
+    badges: ["At-Home"],
     colorBg: "bg-[#FFECB5]/20 dark:bg-[#442d04]/12",
     colorText: "text-[#b45309] dark:text-[#f59e0b]",
   },
@@ -223,10 +227,22 @@ function WideServiceCard({ service }: { service: any }) {
   const { title, description, image, icon, badges, colorBg, colorText } =
     service;
 
+    
+
   return (
     <article className="rounded-2xl border p-1 bg-white/60 dark:bg-neutral-900/50 backdrop-blur shadow-sm h-full">
       <div className="rounded-xl border-0.75 bg-white dark:bg-neutral-900 flex h-full overflow-hidden">
         {/* Wider image — perfect flush */}
+        {service.id === "grooming" && (
+          <FloatingGif
+            src={TappingCat}
+            alt="Cat tapping"
+            size={80}
+            className="absolute -top-10 left-10 md:left-10"
+            style={{ transform: "translateY(-20%)" }}
+          />
+        )}
+
         <img
           src={image}
           alt={title}

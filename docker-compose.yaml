@@ -1,0 +1,11 @@
+version: "3.9"
+
+services:
+  marleynme:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+      - "443:443"
+    restart: unless-stopped

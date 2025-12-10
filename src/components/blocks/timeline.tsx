@@ -10,7 +10,7 @@ const timelineSteps = [
     step: "Step 1",
     title: "Create Profile",
     description:
-      "Sign up and set up a quick profile for your pet — their needs, habits, and personality.",
+      "Sign up and set up a profile for your pet - their species, breed, and needs.",
     icon: <FaUserPlus className="w-5 h-5" />,
     color: "bg-[#4F9BFF]/20 text-[#4F9BFF]",
   },
@@ -26,7 +26,7 @@ const timelineSteps = [
     step: "Step 3",
     title: "Schedule Date",
     description:
-      "Choose a time that works for you — including evenings and weekends.",
+      "Choose a time that works for you. And pick between at-home or on-site services.",
     icon: <FaRegCalendarCheck className="w-5 h-5" />,
     color: "bg-[#FFD447]/20 text-[#FFD447]",
   },

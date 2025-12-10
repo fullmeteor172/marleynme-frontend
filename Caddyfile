@@ -1,0 +1,5 @@
+marleynme.in, www.marleynme.in {
+    root * /usr/share/caddy
+    file_server
+    try_files {path} /index.html
+}
