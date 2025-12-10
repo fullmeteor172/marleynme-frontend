@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth-store';
 
 export const useProfile = () => {
   const setProfile = useAuthStore((state) => state.setProfile);
+  const user = useAuthStore((state) => state.user);
 
   return useQuery({
     queryKey: ['profile'],
@@ -14,13 +15,19 @@ export const useProfile = () => {
       return profile;
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: false, // Don't retry if profile doesn't exist
+    enabled: !!user, // Only fetch if user is authenticated
   });
 };
 
 export const useOnboardingStatus = () => {
+  const user = useAuthStore((state) => state.user);
+
   return useQuery({
     queryKey: ['onboarding-status'],
     queryFn: profileService.getOnboardingStatus,
+    retry: false, // Don't retry if user doesn't exist yet
+    enabled: !!user, // Only fetch if user is authenticated
   });
 };
 

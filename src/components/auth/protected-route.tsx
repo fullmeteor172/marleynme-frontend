@@ -8,9 +8,9 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requireOnboarding = true }: ProtectedRouteProps) {
-  const { user, isLoading, isInitialized } = useAuthStore();
+  const { user, profile, isLoading, isInitialized } = useAuthStore();
   const location = useLocation();
-  const { data: onboardingStatus, isLoading: isLoadingOnboarding } = useOnboardingStatus();
+  const { data: onboardingStatus, isLoading: isLoadingOnboarding, error: onboardingError } = useOnboardingStatus();
 
   // Wait for auth to initialize
   if (!isInitialized || isLoading) {
@@ -18,6 +18,7 @@ export function ProtectedRoute({ children, requireOnboarding = true }: Protected
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-2">Loading...</h2>
+          <p className="text-muted-foreground">Checking authentication...</p>
         </div>
       </div>
     );
@@ -29,8 +30,27 @@ export function ProtectedRoute({ children, requireOnboarding = true }: Protected
   }
 
   // Check onboarding status if required
-  if (requireOnboarding && !isLoadingOnboarding) {
-    if (onboardingStatus && !onboardingStatus.is_complete) {
+  if (requireOnboarding) {
+    // If we're still loading the onboarding status, show loading
+    if (isLoadingOnboarding) {
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold mb-2">Loading...</h2>
+            <p className="text-muted-foreground">Checking your profile...</p>
+          </div>
+        </div>
+      );
+    }
+
+    // If there's an error fetching onboarding status (likely no profile exists)
+    // OR if onboarding is not complete, redirect to onboarding
+    if (onboardingError || (onboardingStatus && !onboardingStatus.is_complete)) {
+      return <Navigate to="/onboarding" replace />;
+    }
+
+    // Also check if profile doesn't exist at all
+    if (!profile && !onboardingStatus) {
       return <Navigate to="/onboarding" replace />;
     }
   }
