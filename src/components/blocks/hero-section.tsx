@@ -1,5 +1,4 @@
 import { ContainerTextFlip } from "../ui/container-text-flip";
-import { InteractiveHoverButton } from "../ui/interactive-hover-button";
 import { FloatingGif } from "../ui/floating-gif";
 import jumpingCat from "@/assets/cat-jumping.gif";
 
@@ -41,36 +40,19 @@ const Hero = () => {
 
 
         {/* Subtext — warmer + shorter */}
-        <p className="text-lg md:text-xl text-neutral-600 dark:text-neutral-300 max-w-3xl mx-auto mb-10 leading-relaxed">
+        <p className="text-lg md:text-xl text-neutral-600 dark:text-neutral-300 max-w-3xl mx-auto mb-6 leading-relaxed">
           All the help your pet needs, from vets to groomers to walkers -
           brought together with warmth, trust, and care.
         </p>
 
-        {/* Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full">
-          <div className="relative w-full md:w-auto">
-            <InteractiveHoverButton
-              variant="primary"
-              className="w-full md:w-auto"
-            >
-              Join the Waitlist
-            </InteractiveHoverButton>
-
-            {/* Cat GIF */}
-            <FloatingGif
-              src={jumpingCat}
-              alt="Jumping cat"
-              size={100} // pick your size here
-              className="absolute -top-22.5 right-10 md:right-10"
-            />
-          </div>
-
-          <InteractiveHoverButton
-            variant="secondary"
-            className="w-full md:w-auto"
-          >
-            Become a Service Partner
-          </InteractiveHoverButton>
+        {/* Cat GIF - positioned for decoration */}
+        <div className="relative w-full flex justify-center mt-8">
+          <FloatingGif
+            src={jumpingCat}
+            alt="Jumping cat"
+            size={100}
+            className=""
+          />
         </div>
       </div>
     </section>
