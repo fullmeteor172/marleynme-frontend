@@ -1,5 +1,5 @@
-import { MapPin, Plus, Edit, Trash2 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { MapPin, Plus, Trash2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,29 +13,38 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAddresses, useCreateAddress, useDeleteAddress } from "@/hooks/use-addresses";
+import { useCities } from "@/hooks/use-profile";
 import { useState } from "react";
 import { toast } from "sonner";
 
 export function AddressBookPage() {
   const { data: addresses, isLoading } = useAddresses();
+  const { data: cities } = useCities();
   const createAddress = useCreateAddress();
   const deleteAddress = useDeleteAddress();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     label: "",
-    streetAddress: "",
+    line1: "",
+    line2: "",
+    landmark: "",
+    city_id: "",
     locality: "",
-    city: "",
-    state: "",
     pincode: "",
-    country: "India",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.streetAddress || !formData.city || !formData.pincode) {
+    if (!formData.line1 || !formData.city_id) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -43,25 +52,25 @@ export function AddressBookPage() {
     try {
       await createAddress.mutateAsync({
         label: formData.label || "Home",
-        street_address: formData.streetAddress,
-        locality: formData.locality,
-        city: formData.city,
-        state: formData.state,
-        pincode: formData.pincode,
-        country: formData.country,
+        line1: formData.line1,
+        line2: formData.line2 || undefined,
+        landmark: formData.landmark || undefined,
+        city_id: formData.city_id,
+        locality: formData.locality || undefined,
+        pincode: formData.pincode || undefined,
       });
       toast.success("Address added successfully");
       setIsDialogOpen(false);
       setFormData({
         label: "",
-        streetAddress: "",
+        line1: "",
+        line2: "",
+        landmark: "",
+        city_id: "",
         locality: "",
-        city: "",
-        state: "",
         pincode: "",
-        country: "India",
       });
-    } catch (error) {
+    } catch {
       toast.error("Failed to add address");
     }
   };
@@ -74,9 +83,14 @@ export function AddressBookPage() {
     try {
       await deleteAddress.mutateAsync(addressId);
       toast.success("Address deleted successfully");
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete address");
     }
+  };
+
+  const getCityName = (cityId: string) => {
+    const city = cities?.find(c => c.id === cityId);
+    return city ? `${city.name}, ${city.state}` : cityId;
   };
 
   if (isLoading) {
@@ -122,64 +136,70 @@ export function AddressBookPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="streetAddress">Street Address *</Label>
+                  <Label htmlFor="line1">Address Line 1 *</Label>
                   <Input
-                    id="streetAddress"
-                    placeholder="123 Main Street"
-                    value={formData.streetAddress}
-                    onChange={(e) => setFormData({ ...formData, streetAddress: e.target.value })}
+                    id="line1"
+                    placeholder="123 Main Street, Apartment 4B"
+                    value={formData.line1}
+                    onChange={(e) => setFormData({ ...formData, line1: e.target.value })}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="locality">Locality</Label>
+                  <Label htmlFor="line2">Address Line 2</Label>
                   <Input
-                    id="locality"
-                    placeholder="Downtown"
-                    value={formData.locality}
-                    onChange={(e) => setFormData({ ...formData, locality: e.target.value })}
+                    id="line2"
+                    placeholder="Building name, Floor, etc."
+                    value={formData.line2}
+                    onChange={(e) => setFormData({ ...formData, line2: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="landmark">Landmark</Label>
+                  <Input
+                    id="landmark"
+                    placeholder="Near City Mall"
+                    value={formData.landmark}
+                    onChange={(e) => setFormData({ ...formData, landmark: e.target.value })}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="city">City *</Label>
-                    <Input
-                      id="city"
-                      placeholder="Hyderabad"
-                      value={formData.city}
-                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                      required
-                    />
+                    <Label htmlFor="city_id">City *</Label>
+                    <Select
+                      value={formData.city_id}
+                      onValueChange={(value) => setFormData({ ...formData, city_id: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a city" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cities?.map((city) => (
+                          <SelectItem key={city.id} value={city.id}>
+                            {city.name}, {city.state}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="state">State</Label>
+                    <Label htmlFor="locality">Locality</Label>
                     <Input
-                      id="state"
-                      placeholder="Telangana"
-                      value={formData.state}
-                      onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                      id="locality"
+                      placeholder="Downtown"
+                      value={formData.locality}
+                      onChange={(e) => setFormData({ ...formData, locality: e.target.value })}
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="pincode">Pincode *</Label>
-                    <Input
-                      id="pincode"
-                      placeholder="500001"
-                      value={formData.pincode}
-                      onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="country">Country</Label>
-                    <Input
-                      id="country"
-                      value={formData.country}
-                      onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pincode">Pincode</Label>
+                  <Input
+                    id="pincode"
+                    placeholder="500001"
+                    value={formData.pincode}
+                    onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
+                  />
                 </div>
               </div>
               <DialogFooter>
@@ -214,10 +234,10 @@ export function AddressBookPage() {
                 <div className="flex items-start justify-between">
                   <div>
                     <CardTitle className="flex items-center gap-2">
-                      {address.label}
-                      {address.is_primary && (
+                      {address.label || "Address"}
+                      {address.is_default && (
                         <Badge variant="secondary" className="text-xs">
-                          Primary
+                          Default
                         </Badge>
                       )}
                     </CardTitle>
@@ -235,13 +255,14 @@ export function AddressBookPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-sm space-y-1">
-                  <p>{address.street_address}</p>
-                  {address.locality && <p>{address.locality}</p>}
+                  <p>{address.line1}</p>
+                  {address.line2 && <p>{address.line2}</p>}
+                  {address.landmark && <p className="text-muted-foreground">Near {address.landmark}</p>}
                   <p>
-                    {address.city}
-                    {address.state && `, ${address.state}`} - {address.pincode}
+                    {address.locality && `${address.locality}, `}
+                    {getCityName(address.city_id)}
+                    {address.pincode && ` - ${address.pincode}`}
                   </p>
-                  {address.country && <p>{address.country}</p>}
                 </div>
               </CardContent>
             </Card>
