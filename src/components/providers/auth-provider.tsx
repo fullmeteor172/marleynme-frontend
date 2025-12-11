@@ -6,8 +6,8 @@ import { useAuthStore } from '@/stores/auth-store';
 import { profileService } from '@/services/profile-service';
 import { useQueryClient } from '@tanstack/react-query';
 
-// Timeout for auth initialization (5 seconds is plenty for normal operation)
-const INIT_TIMEOUT_MS = 5000;
+// Timeout for auth initialization - increased to allow for PKCE flow
+const INIT_TIMEOUT_MS = 8000;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
