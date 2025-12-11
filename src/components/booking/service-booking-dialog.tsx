@@ -27,7 +27,7 @@ import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { format, addDays, isAfter } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import type { Service, ServiceSpecies, Pet, Address } from "@/types";
+import type { Service, ServiceSpecies, Pet } from "@/types";
 
 interface ServiceBookingDialogProps {
   open: boolean;

@@ -81,11 +81,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
     let cleanupSessionMonitoring: (() => void) | null = null;
+    let initTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const initializeAuth = async () => {
+      // Set a timeout to ensure initialization completes even if something hangs
+      initTimeout = setTimeout(() => {
+        if (mounted && !useAuthStore.getState().isInitialized) {
+          console.warn('Auth initialization timed out - forcing initialized state');
+          setLoading(false);
+          setInitialized(true);
+        }
+      }, 10000); // 10 second timeout
+
       try {
         // Get initial session
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+        if (sessionError) {
+          console.error('Error getting session:', sessionError);
+        }
 
         if (!mounted) return;
 
@@ -94,19 +108,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Fetch profile if authenticated
         if (session?.user) {
-          await fetchUserProfile();
+          try {
+            await fetchUserProfile();
+          } catch (profileError) {
+            // Don't block initialization if profile fetch fails
+            // The profile might not exist yet (new user)
+            console.log('Profile fetch during init failed (might be new user):', profileError);
+          }
 
           // Start session monitoring only for authenticated users
           cleanupSessionMonitoring = startSessionMonitoring();
         }
 
-        setLoading(false);
-        setInitialized(true);
+        if (mounted) {
+          setLoading(false);
+          setInitialized(true);
+        }
       } catch (error) {
         console.error('Error initializing auth:', error);
         if (mounted) {
           setLoading(false);
           setInitialized(true);
+        }
+      } finally {
+        if (initTimeout) {
+          clearTimeout(initTimeout);
+          initTimeout = null;
         }
       }
     };
@@ -168,6 +195,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       mounted = false;
+      if (initTimeout) {
+        clearTimeout(initTimeout);
+      }
       subscription.unsubscribe();
       unsubscribeExpiring();
       unsubscribeExpired();

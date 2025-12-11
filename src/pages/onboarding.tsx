@@ -65,6 +65,15 @@ export function OnboardingPage() {
   const totalSteps = data.roles.includes("service_partner") ? 6 : 3;
   const progress = (step / totalSteps) * 100;
 
+  // Helper to complete onboarding and navigate
+  const finishOnboarding = async () => {
+    // Complete onboarding - the mutation now waits for refetch to complete
+    await completeOnboarding.mutateAsync();
+    // Navigate after the mutation's onSuccess has fully completed
+    // The mutation now properly waits for cache invalidation and refetch
+    navigate("/dashboard", { replace: true });
+  };
+
   const handleNext = async () => {
     if (isProcessing) return;
 
@@ -73,7 +82,6 @@ export function OnboardingPage() {
       if (step === 1) {
         if (!data.firstName.trim()) {
           toast.error("Please enter your first name");
-          setIsProcessing(false);
           return;
         }
         await updateProfile.mutateAsync({
@@ -84,7 +92,6 @@ export function OnboardingPage() {
       } else if (step === 2) {
         if (!data.cityId) {
           toast.error("Please select a city");
-          setIsProcessing(false);
           return;
         }
         await updateProfile.mutateAsync({ city_id: data.cityId });
@@ -92,7 +99,6 @@ export function OnboardingPage() {
       } else if (step === 3) {
         if (data.roles.length === 0) {
           toast.error("Please select at least one option");
-          setIsProcessing(false);
           return;
         }
         // Add all roles sequentially
@@ -102,26 +108,36 @@ export function OnboardingPage() {
 
         if (!data.roles.includes("service_partner")) {
           // Complete onboarding for non-service-partners
-          await completeOnboarding.mutateAsync();
-          // Wait a bit for queries to invalidate and refetch
-          await new Promise(resolve => setTimeout(resolve, 500));
-          navigate("/dashboard", { replace: true });
+          await finishOnboarding();
+          return; // Don't reset isProcessing since we're navigating away
         } else {
           setStep(4);
         }
       } else if (step === 4) {
         if (!data.phone || data.phone.length !== 10) {
           toast.error("Please enter a valid 10-digit phone number");
-          setIsProcessing(false);
           return;
         }
         await updateProfile.mutateAsync({ phone: `+91${data.phone}` });
         setStep(5);
       } else if (step === 5) {
         // Save service interests if any selected
+        // Use graceful error handling - don't block onboarding if interests fail to save
+        // This is a known backend issue (500 error)
         if (data.serviceIds.length > 0) {
+          const failedInterests: string[] = [];
           for (const serviceId of data.serviceIds) {
-            await partnerService.addInterest(serviceId);
+            try {
+              await partnerService.addInterest(serviceId);
+            } catch (error) {
+              console.error("Failed to save interest:", serviceId, error);
+              failedInterests.push(serviceId);
+            }
+          }
+          if (failedInterests.length > 0 && failedInterests.length < data.serviceIds.length) {
+            toast.warning("Some service interests couldn't be saved. You can update them later from your profile.");
+          } else if (failedInterests.length === data.serviceIds.length) {
+            toast.error("Couldn't save service interests. You can add them later from your profile.");
           }
         }
         setStep(6);
@@ -130,10 +146,8 @@ export function OnboardingPage() {
         if (data.pincode) {
           await updateProfile.mutateAsync({ pincode: data.pincode });
         }
-        await completeOnboarding.mutateAsync();
-        // Wait a bit for queries to invalidate and refetch
-        await new Promise(resolve => setTimeout(resolve, 500));
-        navigate("/dashboard", { replace: true });
+        await finishOnboarding();
+        return; // Don't reset isProcessing since we're navigating away
       }
     } catch (error) {
       console.error("Onboarding error:", error);
@@ -451,18 +465,17 @@ export function OnboardingPage() {
                   if (isProcessing) return;
                   setIsProcessing(true);
                   try {
-                    await completeOnboarding.mutateAsync();
-                    // Wait a bit for queries to invalidate and refetch
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    navigate("/dashboard", { replace: true });
+                    await finishOnboarding();
+                    // Don't reset isProcessing since we're navigating away
                   } catch (error) {
-                    toast.error("Failed to complete onboarding");
+                    console.error("Skip onboarding error:", error);
+                    toast.error("Failed to complete onboarding. Please try again.");
                     setIsProcessing(false);
                   }
                 }}
                 disabled={isProcessing}
               >
-                Skip
+                {isProcessing ? "Finishing..." : "Skip"}
               </Button>
             )}
             <Button

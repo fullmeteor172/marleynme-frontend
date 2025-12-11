@@ -8,6 +8,9 @@ const DEFAULT_TIMEOUT = 30000; // 30 seconds
 const MAX_RETRIES = 3;
 const RETRY_DELAY_BASE = 1000; // 1 second base, exponential backoff
 
+// Detect Firefox for browser-specific handling
+const isFirefox = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('firefox');
+
 // Custom error types for better error handling
 export class ApiError extends Error {
   status: number;
@@ -219,13 +222,38 @@ class ApiClient {
       return response;
     } catch (error) {
       if (error instanceof Error) {
-        if (error.name === 'AbortError') {
+        // Handle abort/timeout errors - Firefox may use different error names/messages
+        if (
+          error.name === 'AbortError' ||
+          error.name === 'NS_BINDING_ABORTED' || // Firefox-specific
+          error.message.includes('aborted') ||
+          error.message.includes('cancelled') ||
+          error.message.includes('canceled')
+        ) {
           throw new TimeoutError(`Request timed out after ${timeout}ms`);
         }
+
         // Network errors (no internet, DNS failure, etc.)
-        if (error.message.includes('Failed to fetch') ||
-            error.message.includes('NetworkError') ||
-            error.message.includes('Network request failed')) {
+        // Firefox may throw different error messages
+        const errorMessage = error.message.toLowerCase();
+        if (
+          error.message.includes('Failed to fetch') ||
+          error.message.includes('NetworkError') ||
+          error.message.includes('Network request failed') ||
+          error.name === 'TypeError' && errorMessage.includes('network') ||
+          errorMessage.includes('connection refused') ||
+          errorMessage.includes('unable to connect') ||
+          errorMessage.includes('network error') ||
+          errorMessage.includes('ns_error_') || // Firefox NS_ERROR codes
+          errorMessage.includes('cors') // CORS errors often manifest as network errors
+        ) {
+          apiEvents.emit('network_error');
+          throw new NetworkError(error.message);
+        }
+
+        // For Firefox: TypeError can indicate various network issues
+        if (isFirefox && error.name === 'TypeError') {
+          console.warn('Firefox TypeError in fetch - treating as network error:', error.message);
           apiEvents.emit('network_error');
           throw new NetworkError(error.message);
         }
@@ -282,10 +310,14 @@ class ApiClient {
           // Try to refresh token once
           if (attempt === 0) {
             console.log('Attempting token refresh after 401...');
-            const newToken = await attemptTokenRefresh();
-            if (newToken) {
-              attempt++;
-              continue; // Retry with new token
+            try {
+              const newToken = await attemptTokenRefresh();
+              if (newToken) {
+                attempt++;
+                continue; // Retry with new token
+              }
+            } catch (refreshError) {
+              console.error('Token refresh failed:', refreshError);
             }
           }
           // Token refresh failed or already tried - emit session expired
@@ -298,13 +330,22 @@ class ApiClient {
           throw error;
         }
 
+        // For network/timeout errors, always retry (they're retryable by nature)
+        const isRetryableError =
+          error instanceof NetworkError ||
+          error instanceof TimeoutError ||
+          (error instanceof ApiError && error.isRetryable);
+
         // Check if we should retry
-        if (attempt < maxRetries - 1) {
+        if (isRetryableError && attempt < maxRetries - 1) {
           const delay = getRetryDelay(attempt);
-          console.log(`Request failed, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})...`);
+          console.log(`Request failed (${error instanceof Error ? error.name : 'unknown'}), retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})...`);
           await sleep(delay);
+          attempt++;
+          continue;
         }
 
+        // No more retries - throw the error
         attempt++;
       }
     }

@@ -28,6 +28,10 @@ export const useOnboardingStatus = () => {
     queryFn: profileService.getOnboardingStatus,
     retry: false, // Don't retry if user doesn't exist yet
     enabled: !!user, // Only fetch if user is authenticated
+    // Always refetch on mount to ensure we have fresh data after navigation
+    refetchOnMount: 'always',
+    // Don't use stale data for this critical query
+    staleTime: 0,
   });
 };
 
@@ -60,9 +64,19 @@ export const useCompleteOnboarding = () => {
 
   return useMutation({
     mutationFn: profileService.completeOnboarding,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
-      queryClient.invalidateQueries({ queryKey: ['onboarding-status'] });
+    onSuccess: async () => {
+      // Invalidate and refetch in parallel, waiting for both to complete
+      // This ensures the cache is updated before navigation
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['profile'] }),
+        queryClient.invalidateQueries({ queryKey: ['onboarding-status'] }),
+      ]);
+
+      // Force an immediate refetch of onboarding status to ensure cache is fresh
+      await queryClient.refetchQueries({
+        queryKey: ['onboarding-status'],
+        type: 'active',
+      });
     },
   });
 };
