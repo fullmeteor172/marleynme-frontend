@@ -1,4 +1,4 @@
-import { getAccessToken, refreshSession, isSessionValid } from './supabase';
+import { getValidAccessToken, hasStoredSession, refreshSessionIfNeeded } from './supabase';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.marleynme.in';
 const API_PREFIX = '/api/v1';
@@ -8,21 +8,13 @@ const DEFAULT_TIMEOUT = 30000; // 30 seconds
 const MAX_RETRIES = 3;
 const RETRY_DELAY_BASE = 1000; // 1 second base, exponential backoff
 
-// Detect Firefox for browser-specific handling
-const isFirefox = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('firefox');
-
-// Custom error types for better error handling
+// Custom error types
 export class ApiError extends Error {
   status: number;
   code?: string;
   isRetryable: boolean;
 
-  constructor(
-    message: string,
-    status: number,
-    code?: string,
-    isRetryable: boolean = false
-  ) {
+  constructor(message: string, status: number, code?: string, isRetryable: boolean = false) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
@@ -52,7 +44,7 @@ export class TimeoutError extends ApiError {
   }
 }
 
-// Event emitter for API events (401 errors, etc.)
+// Event emitter for API events
 type ApiEventType = 'auth_error' | 'network_error' | 'session_expired';
 type ApiEventHandler = () => void;
 
@@ -72,7 +64,7 @@ class ApiEventEmitter {
   }
 
   emit(event: ApiEventType) {
-    this.handlers.get(event)?.forEach(handler => {
+    this.handlers.get(event)?.forEach((handler) => {
       try {
         handler();
       } catch (e) {
@@ -84,24 +76,49 @@ class ApiEventEmitter {
 
 export const apiEvents = new ApiEventEmitter();
 
+// Track last successful API call time for stale detection
+let lastSuccessfulApiCall = Date.now();
+const STALE_THRESHOLD = 2 * 60 * 1000; // 2 minutes
+
+// Check if API client might be stale (Firefox background tab issue)
+function isApiClientStale(): boolean {
+  return Date.now() - lastSuccessfulApiCall > STALE_THRESHOLD;
+}
+
+// Reset API client state (called on page visibility change)
+async function wakeUpApiClient(): Promise<void> {
+  if (isApiClientStale() && hasStoredSession()) {
+    console.log('API client appears stale, refreshing session...');
+    await refreshSessionIfNeeded();
+  }
+  lastSuccessfulApiCall = Date.now();
+}
+
+// Set up visibility change listener to wake up API on tab focus
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      wakeUpApiClient();
+    }
+  });
+}
+
 // Token refresh lock to prevent multiple simultaneous refresh attempts
 let isRefreshingToken = false;
 let refreshPromise: Promise<string | null> | null = null;
 
-async function getValidToken(): Promise<string | null> {
-  // Check if session is valid first
-  if (!isSessionValid()) {
+async function getToken(): Promise<string | null> {
+  if (!hasStoredSession()) {
     return null;
   }
 
-  // If already refreshing, wait for the existing refresh
+  // If already refreshing, wait for it
   if (isRefreshingToken && refreshPromise) {
     return refreshPromise;
   }
 
   try {
-    const token = await getAccessToken();
-    return token;
+    return await getValidAccessToken();
   } catch (error) {
     console.error('Failed to get access token:', error);
     return null;
@@ -114,10 +131,17 @@ async function attemptTokenRefresh(): Promise<string | null> {
   }
 
   isRefreshingToken = true;
-  refreshPromise = refreshSession().finally(() => {
-    isRefreshingToken = false;
-    refreshPromise = null;
-  });
+  refreshPromise = refreshSessionIfNeeded()
+    .then(async (success) => {
+      if (success) {
+        return await getValidAccessToken();
+      }
+      return null;
+    })
+    .finally(() => {
+      isRefreshingToken = false;
+      refreshPromise = null;
+    });
 
   return refreshPromise;
 }
@@ -125,18 +149,18 @@ async function attemptTokenRefresh(): Promise<string | null> {
 // Calculate retry delay with exponential backoff and jitter
 function getRetryDelay(attempt: number): number {
   const exponentialDelay = RETRY_DELAY_BASE * Math.pow(2, attempt);
-  const jitter = Math.random() * 1000; // Random 0-1000ms jitter
-  return Math.min(exponentialDelay + jitter, 10000); // Cap at 10 seconds
+  const jitter = Math.random() * 500;
+  return Math.min(exponentialDelay + jitter, 8000);
 }
 
 // Sleep utility
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 class ApiClient {
   private async getHeaders(includeContentType: boolean = true): Promise<HeadersInit> {
-    const token = await getValidToken();
+    const token = await getToken();
     const headers: HeadersInit = {};
 
     if (includeContentType) {
@@ -163,10 +187,8 @@ class ApiClient {
         // Response body is not JSON
       }
 
-      // Handle specific status codes
       switch (response.status) {
         case 401:
-          // Emit auth error event for global handling
           apiEvents.emit('auth_error');
           throw new AuthenticationError(errorMessage);
 
@@ -177,20 +199,21 @@ class ApiClient {
           throw new ApiError(errorMessage, 404, errorCode || 'NOT_FOUND', false);
 
         case 429:
-          // Rate limited - retryable
           throw new ApiError(errorMessage, 429, 'RATE_LIMITED', true);
 
         case 500:
         case 502:
         case 503:
         case 504:
-          // Server errors - retryable
           throw new ApiError(errorMessage, response.status, errorCode || 'SERVER_ERROR', true);
 
         default:
           throw new ApiError(errorMessage, response.status, errorCode, false);
       }
     }
+
+    // Update last successful call time
+    lastSuccessfulApiCall = Date.now();
 
     // Handle empty responses
     const contentLength = response.headers.get('content-length');
@@ -201,7 +224,6 @@ class ApiClient {
     try {
       return await response.json();
     } catch {
-      // Response is not JSON but request succeeded
       return {} as T;
     }
   }
@@ -222,10 +244,10 @@ class ApiClient {
       return response;
     } catch (error) {
       if (error instanceof Error) {
-        // Handle abort/timeout errors - Firefox may use different error names/messages
+        // Handle abort/timeout - various browser error messages
         if (
           error.name === 'AbortError' ||
-          error.name === 'NS_BINDING_ABORTED' || // Firefox-specific
+          error.name === 'NS_BINDING_ABORTED' ||
           error.message.includes('aborted') ||
           error.message.includes('cancelled') ||
           error.message.includes('canceled')
@@ -233,27 +255,24 @@ class ApiClient {
           throw new TimeoutError(`Request timed out after ${timeout}ms`);
         }
 
-        // Network errors (no internet, DNS failure, etc.)
-        // Firefox may throw different error messages
-        const errorMessage = error.message.toLowerCase();
+        // Network errors
+        const msg = error.message.toLowerCase();
         if (
           error.message.includes('Failed to fetch') ||
           error.message.includes('NetworkError') ||
           error.message.includes('Network request failed') ||
-          error.name === 'TypeError' && errorMessage.includes('network') ||
-          errorMessage.includes('connection refused') ||
-          errorMessage.includes('unable to connect') ||
-          errorMessage.includes('network error') ||
-          errorMessage.includes('ns_error_') || // Firefox NS_ERROR codes
-          errorMessage.includes('cors') // CORS errors often manifest as network errors
+          msg.includes('network') ||
+          msg.includes('connection refused') ||
+          msg.includes('unable to connect') ||
+          msg.includes('ns_error_') ||
+          msg.includes('cors')
         ) {
           apiEvents.emit('network_error');
           throw new NetworkError(error.message);
         }
 
-        // For Firefox: TypeError can indicate various network issues
-        if (isFirefox && error.name === 'TypeError') {
-          console.warn('Firefox TypeError in fetch - treating as network error:', error.message);
+        // Firefox TypeError often indicates network issues
+        if (error.name === 'TypeError' && !error.message.includes('Cannot read')) {
           apiEvents.emit('network_error');
           throw new NetworkError(error.message);
         }
@@ -274,12 +293,7 @@ class ApiClient {
       includeContentType?: boolean;
     } = {}
   ): Promise<T> {
-    const {
-      body,
-      timeout = DEFAULT_TIMEOUT,
-      maxRetries = MAX_RETRIES,
-      includeContentType = true
-    } = options;
+    const { body, timeout = DEFAULT_TIMEOUT, maxRetries = MAX_RETRIES, includeContentType = true } = options;
 
     const url = `${API_BASE_URL}${API_PREFIX}${endpoint}`;
     let lastError: Error | null = null;
@@ -287,6 +301,11 @@ class ApiClient {
 
     while (attempt < maxRetries) {
       try {
+        // Wake up API client if it might be stale
+        if (isApiClientStale()) {
+          await wakeUpApiClient();
+        }
+
         const headers = await this.getHeaders(includeContentType);
 
         const fetchOptions: RequestInit = {
@@ -305,22 +324,20 @@ class ApiClient {
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
 
-        // Handle authentication errors specially
+        // Handle authentication errors
         if (error instanceof AuthenticationError) {
-          // Try to refresh token once
           if (attempt === 0) {
             console.log('Attempting token refresh after 401...');
             try {
               const newToken = await attemptTokenRefresh();
               if (newToken) {
                 attempt++;
-                continue; // Retry with new token
+                continue;
               }
             } catch (refreshError) {
               console.error('Token refresh failed:', refreshError);
             }
           }
-          // Token refresh failed or already tried - emit session expired
           apiEvents.emit('session_expired');
           throw error;
         }
@@ -330,27 +347,26 @@ class ApiClient {
           throw error;
         }
 
-        // For network/timeout errors, always retry (they're retryable by nature)
+        // Check if error is retryable
         const isRetryableError =
           error instanceof NetworkError ||
           error instanceof TimeoutError ||
           (error instanceof ApiError && error.isRetryable);
 
-        // Check if we should retry
         if (isRetryableError && attempt < maxRetries - 1) {
           const delay = getRetryDelay(attempt);
-          console.log(`Request failed (${error instanceof Error ? error.name : 'unknown'}), retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})...`);
+          console.log(
+            `Request failed (${error instanceof Error ? error.name : 'unknown'}), retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})...`
+          );
           await sleep(delay);
           attempt++;
           continue;
         }
 
-        // No more retries - throw the error
         attempt++;
       }
     }
 
-    // All retries exhausted
     throw lastError || new Error('Request failed after all retries');
   }
 
@@ -378,9 +394,9 @@ class ApiClient {
     endpoint: string,
     file: File,
     additionalData?: Record<string, string>,
-    timeout: number = 60000 // Longer timeout for file uploads
+    timeout: number = 60000
   ): Promise<T> {
-    const token = await getValidToken();
+    const token = await getToken();
     const formData = new FormData();
     formData.append('file', file);
 
@@ -395,7 +411,6 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    // File uploads don't use the standard retry logic due to potential partial uploads
     const url = `${API_BASE_URL}${API_PREFIX}${endpoint}`;
     const response = await this.fetchWithTimeout(
       url,

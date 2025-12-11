@@ -1,34 +1,33 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import {
-  supabase,
-  startSessionMonitoring,
-  onSessionExpiring,
-  onSessionExpired,
-  forceLogout,
-} from '@/lib/supabase';
+import { supabase, refreshSessionIfNeeded, forceLogout } from '@/lib/supabase';
 import { apiEvents } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
-import { useProfile } from '@/hooks/use-profile';
+import { profileService } from '@/services/profile-service';
 import { useQueryClient } from '@tanstack/react-query';
-import { SessionExpiringWarning } from '@/components/auth/session-expiring-warning';
+
+// Timeout for auth initialization (5 seconds is plenty for normal operation)
+const INIT_TIMEOUT_MS = 5000;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
-  const { setSession, setUser, setLoading, setInitialized, setProfile, user } = useAuthStore();
-  const { refetch: refetchProfile } = useProfile();
+  const initTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isInitRef = useRef(false);
 
-  // Session expiring state
-  const [sessionExpiringIn, setSessionExpiringIn] = useState<number | null>(null);
-  const [showSessionWarning, setShowSessionWarning] = useState(false);
+  const {
+    setSession,
+    setUser,
+    setProfile,
+    setInitializing,
+    setInitialized,
+    user,
+  } = useAuthStore();
 
   // Handle session expired - logout and redirect
   const handleSessionExpired = useCallback(async () => {
     console.log('Session expired, logging out...');
-    setShowSessionWarning(false);
-    setSessionExpiringIn(null);
 
     // Clear all state
     setSession(null);
@@ -47,103 +46,80 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [setSession, setUser, setProfile, queryClient, navigate, location.pathname]);
 
-  // Handle session expiring warning
-  const handleSessionExpiring = useCallback((expiresInMs: number) => {
-    setSessionExpiringIn(expiresInMs);
-
-    // Only show warning if less than 5 minutes
-    if (expiresInMs < 5 * 60 * 1000) {
-      setShowSessionWarning(true);
-    }
-  }, []);
-
-  // Handle auth error from API (401)
-  const handleAuthError = useCallback(() => {
-    console.log('Auth error received from API');
-    // The API layer will attempt token refresh automatically
-    // This is just for logging/monitoring
-  }, []);
-
-  // Fetch user profile
-  const fetchUserProfile = useCallback(async () => {
+  // Fetch user profile (non-blocking, doesn't affect auth state)
+  const fetchProfile = useCallback(async () => {
     try {
-      const result = await refetchProfile();
-      if (result.data) {
-        setProfile(result.data);
-      }
+      const profile = await profileService.getProfile();
+      setProfile(profile);
+      // Also update React Query cache
+      queryClient.setQueryData(['profile'], profile);
+      return profile;
     } catch (error) {
-      console.log('No profile found - new user or needs onboarding');
+      // Profile might not exist yet for new users
+      console.log('Could not fetch profile:', error);
       setProfile(null);
+      return null;
     }
-  }, [refetchProfile, setProfile]);
+  }, [setProfile, queryClient]);
 
-  // Initialize auth and set up listeners
+  // Initialize auth - runs once on mount
   useEffect(() => {
-    let mounted = true;
-    let cleanupSessionMonitoring: (() => void) | null = null;
-    let initTimeout: ReturnType<typeof setTimeout> | null = null;
+    // Prevent double initialization in React strict mode
+    if (isInitRef.current) return;
+    isInitRef.current = true;
 
-    const initializeAuth = async () => {
-      // Set a timeout to ensure initialization completes even if something hangs
-      initTimeout = setTimeout(() => {
-        if (mounted && !useAuthStore.getState().isInitialized) {
-          console.warn('Auth initialization timed out - forcing initialized state');
-          setLoading(false);
+    let mounted = true;
+
+    const initialize = async () => {
+      // Set a timeout to ensure we don't hang forever
+      initTimeoutRef.current = setTimeout(() => {
+        if (mounted) {
+          console.warn('Auth initialization timed out');
+          setInitializing(false);
           setInitialized(true);
         }
-      }, 10000); // 10 second timeout
+      }, INIT_TIMEOUT_MS);
 
       try {
-        // Get initial session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        // Get session from Supabase (reads from localStorage first, then validates)
+        const { data: { session }, error } = await supabase.auth.getSession();
 
-        if (sessionError) {
-          console.error('Error getting session:', sessionError);
+        if (error) {
+          console.error('Error getting session:', error);
         }
 
         if (!mounted) return;
 
+        // Update auth state
         setSession(session);
         setUser(session?.user ?? null);
 
-        // Fetch profile if authenticated
+        // Mark as initialized immediately - don't wait for profile
+        setInitializing(false);
+        setInitialized(true);
+
+        // Fetch profile in background (non-blocking)
         if (session?.user) {
-          try {
-            await fetchUserProfile();
-          } catch (profileError) {
-            // Don't block initialization if profile fetch fails
-            // The profile might not exist yet (new user)
-            console.log('Profile fetch during init failed (might be new user):', profileError);
-          }
-
-          // Start session monitoring only for authenticated users
-          cleanupSessionMonitoring = startSessionMonitoring();
-        }
-
-        if (mounted) {
-          setLoading(false);
-          setInitialized(true);
+          fetchProfile();
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
         if (mounted) {
-          setLoading(false);
+          setInitializing(false);
           setInitialized(true);
         }
       } finally {
-        if (initTimeout) {
-          clearTimeout(initTimeout);
-          initTimeout = null;
+        if (initTimeoutRef.current) {
+          clearTimeout(initTimeoutRef.current);
+          initTimeoutRef.current = null;
         }
       }
     };
 
-    initializeAuth();
+    initialize();
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
       console.log('Auth state change:', event);
@@ -152,104 +128,66 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
 
       if (event === 'SIGNED_IN' && session?.user) {
-        // User signed in - fetch profile and start monitoring
-        await fetchUserProfile();
-
-        // Start session monitoring
-        if (cleanupSessionMonitoring) {
-          cleanupSessionMonitoring();
-        }
-        cleanupSessionMonitoring = startSessionMonitoring();
-
-        setShowSessionWarning(false);
-        setSessionExpiringIn(null);
+        // Fetch profile after sign in
+        fetchProfile();
       } else if (event === 'SIGNED_OUT') {
-        // User signed out - clear everything
+        // Clear profile and cache
         setProfile(null);
         queryClient.clear();
-
-        // Stop session monitoring
-        if (cleanupSessionMonitoring) {
-          cleanupSessionMonitoring();
-          cleanupSessionMonitoring = null;
-        }
-
-        setShowSessionWarning(false);
-        setSessionExpiringIn(null);
       } else if (event === 'TOKEN_REFRESHED') {
-        // Token was refreshed - reset warning
-        setShowSessionWarning(false);
-        setSessionExpiringIn(null);
+        // Token refreshed - good, nothing special needed
+        console.log('Token refreshed successfully');
       }
-
-      setLoading(false);
     });
 
-    // Set up session event listeners
-    const unsubscribeExpiring = onSessionExpiring(handleSessionExpiring);
-    const unsubscribeExpired = onSessionExpired(handleSessionExpired);
+    // Listen for API auth errors
+    const unsubscribeAuthError = apiEvents.on('auth_error', () => {
+      console.log('API auth error - will attempt refresh');
+    });
 
-    // Set up API event listeners
-    const unsubscribeAuthError = apiEvents.on('auth_error', handleAuthError);
     const unsubscribeSessionExpired = apiEvents.on('session_expired', handleSessionExpired);
+
+    // Handle visibility change - refresh session when page becomes visible
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && useAuthStore.getState().user) {
+        console.log('Page visible, checking session...');
+        const success = await refreshSessionIfNeeded();
+        if (!success && useAuthStore.getState().hasStoredSession() === false) {
+          // Session truly expired while page was hidden
+          handleSessionExpired();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       mounted = false;
-      if (initTimeout) {
-        clearTimeout(initTimeout);
+      if (initTimeoutRef.current) {
+        clearTimeout(initTimeoutRef.current);
       }
       subscription.unsubscribe();
-      unsubscribeExpiring();
-      unsubscribeExpired();
       unsubscribeAuthError();
       unsubscribeSessionExpired();
-      if (cleanupSessionMonitoring) {
-        cleanupSessionMonitoring();
-      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [
     setSession,
     setUser,
-    setLoading,
-    setInitialized,
     setProfile,
-    fetchUserProfile,
+    setInitializing,
+    setInitialized,
+    fetchProfile,
     queryClient,
-    handleSessionExpiring,
     handleSessionExpired,
-    handleAuthError,
   ]);
 
-  // Handle refresh session action from warning dialog
-  const handleRefreshSession = useCallback(async () => {
-    try {
-      const { error } = await supabase.auth.refreshSession();
-      if (!error) {
-        setShowSessionWarning(false);
-        setSessionExpiringIn(null);
-      }
-    } catch (error) {
-      console.error('Failed to refresh session:', error);
+  // Refetch profile when user changes (e.g., after navigation back to dashboard)
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
     }
-  }, []);
+  }, [user, fetchProfile]);
 
-  // Handle logout action from warning dialog
-  const handleLogout = useCallback(async () => {
-    await handleSessionExpired();
-  }, [handleSessionExpired]);
-
-  return (
-    <>
-      {children}
-      {user && (
-        <SessionExpiringWarning
-          open={showSessionWarning}
-          expiresInMs={sessionExpiringIn}
-          onRefresh={handleRefreshSession}
-          onLogout={handleLogout}
-          onOpenChange={setShowSessionWarning}
-        />
-      )}
-    </>
-  );
+  return <>{children}</>;
 }
