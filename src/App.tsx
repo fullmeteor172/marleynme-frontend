@@ -9,6 +9,7 @@ import { DashboardLayout } from './pages/dashboard/layout';
 import { PetsHomePage } from './pages/dashboard/pets-home';
 import { AddPetPage } from './pages/dashboard/add-pet';
 import { PetDetailPage } from './pages/dashboard/pet-detail';
+import { ServiceRequestDetailPage } from './pages/dashboard/service-request-detail';
 import { AdoptionCenterPage } from './pages/dashboard/adoption';
 import { PartnerPortalPage } from './pages/dashboard/partner';
 import { AdminPortalPage } from './pages/dashboard/admin';
@@ -133,6 +134,7 @@ function App() {
               <Route path="pets/add" element={<AddPetPage />} />
               <Route path="pets/:petId" element={<PetDetailPage />} />
               <Route path="pets/:petId/edit" element={<AddPetPage />} />
+              <Route path="service-requests/:requestId" element={<ServiceRequestDetailPage />} />
               <Route path="adoption" element={<AdoptionCenterPage />} />
               <Route path="partner" element={<PartnerPortalPage />} />
               <Route path="admin" element={<AdminPortalPage />} />

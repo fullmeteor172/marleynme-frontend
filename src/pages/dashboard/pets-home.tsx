@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { usePets, useSpecies } from "@/hooks/use-pets";
 import { useServiceRequests } from "@/hooks/use-service-requests";
+import { useServices } from "@/hooks/use-services";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -13,13 +14,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, PawPrint } from "lucide-react";
+import {
+  Plus,
+  PawPrint,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
 import { format } from "date-fns";
 
 export function PetsHomePage() {
   const navigate = useNavigate();
   const { data: pets, isLoading: petsLoading } = usePets();
   const { data: allSpecies } = useSpecies();
+  const { data: allServices } = useServices();
   const { data: serviceRequests, isLoading: requestsLoading } = useServiceRequests();
 
   // Generate a color based on the pet's name for the placeholder
@@ -58,6 +68,27 @@ export function PetsHomePage() {
       .split("_")
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(" ");
+  };
+
+  const getStatusIcon = (status: string) => {
+    const iconClass = "w-4 h-4";
+    switch (status) {
+      case "pending_assignment":
+        return <Clock className={iconClass} />;
+      case "assigned":
+      case "upcoming":
+        return <AlertCircle className={iconClass} />;
+      case "in_progress":
+        return <Loader2 className={`${iconClass} animate-spin`} />;
+      case "awaiting_completion":
+        return <AlertCircle className={iconClass} />;
+      case "completed":
+        return <CheckCircle2 className={iconClass} />;
+      case "cancelled":
+        return <XCircle className={iconClass} />;
+      default:
+        return <AlertCircle className={iconClass} />;
+    }
   };
 
   if (petsLoading) {
@@ -193,6 +224,7 @@ export function PetsHomePage() {
                 <TableBody>
                   {serviceRequests.map((request) => {
                     const pet = pets?.find((p) => p.id === request.pet_id);
+                    const service = allServices?.find((s) => s.id === request.service_id);
                     return (
                       <TableRow
                         key={request.id}
@@ -202,7 +234,7 @@ export function PetsHomePage() {
                         }
                       >
                         <TableCell className="font-medium">
-                          {request.service_id}
+                          {service?.name || "Unknown Service"}
                         </TableCell>
                         <TableCell>{pet?.name || "Unknown"}</TableCell>
                         <TableCell>
@@ -210,7 +242,10 @@ export function PetsHomePage() {
                         </TableCell>
                         <TableCell>
                           <Badge className={getStatusColor(request.status)}>
-                            {formatStatus(request.status)}
+                            <span className="flex items-center gap-1">
+                              {getStatusIcon(request.status)}
+                              {formatStatus(request.status)}
+                            </span>
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
