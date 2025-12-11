@@ -9,8 +9,8 @@ interface ProtectedRouteProps {
   requireOnboarding?: boolean;
 }
 
-// Shorter timeout since we now have faster initialization
-const LOADING_TIMEOUT_MS = 8000;
+// Increased timeout to allow for PKCE exchange and auth initialization
+const LOADING_TIMEOUT_MS = 12000;
 
 // Auth loading screen component - clean and polished
 function AuthLoadingScreen({ message = 'Checking authentication...' }: { message?: string }) {

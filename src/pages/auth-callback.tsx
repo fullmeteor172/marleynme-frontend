@@ -7,8 +7,8 @@ export function AuthCallbackPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
     let hasNavigated = false;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     // Check for errors in the URL
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
@@ -23,56 +23,71 @@ export function AuthCallbackPage() {
 
     // Helper to navigate only once
     const navigateOnce = (path: string) => {
-      if (!hasNavigated) {
+      if (!hasNavigated && isMounted) {
         hasNavigated = true;
-        if (timeoutId) clearTimeout(timeoutId);
+        console.log(`Navigating to ${path}...`);
         navigate(path);
       }
     };
 
-    // Set up a timeout to prevent infinite waiting
-    timeoutId = setTimeout(() => {
-      if (!hasNavigated) {
+    // Poll for session with exponential backoff
+    // This gives Supabase time to complete the PKCE exchange
+    // and gives AuthProvider time to initialize
+    const pollForSession = async () => {
+      const maxAttempts = 15;
+      let attempt = 0;
+
+      const checkSession = async (): Promise<boolean> => {
+        if (!isMounted || hasNavigated) return false;
+
+        try {
+          const { data: { session }, error } = await supabase.auth.getSession();
+
+          if (error) {
+            console.error('Error getting session:', error);
+            return false;
+          }
+
+          if (session) {
+            console.log('Session found after', attempt + 1, 'attempts');
+            // Wait additional time to ensure AuthProvider has initialized
+            // This prevents the ProtectedRoute timeout
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            navigateOnce('/dashboard');
+            return true;
+          }
+
+          return false;
+        } catch (err) {
+          console.error('Session check failed:', err);
+          return false;
+        }
+      };
+
+      // Poll with increasing delays: 300ms, 500ms, 700ms, 1000ms, 1000ms...
+      while (attempt < maxAttempts && isMounted && !hasNavigated) {
+        const found = await checkSession();
+        if (found) return;
+
+        attempt++;
+        const delay = Math.min(300 + (attempt * 200), 1000);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+
+      // If we got here, we timed out
+      if (isMounted && !hasNavigated) {
+        console.error('Session polling timed out after', attempt, 'attempts');
         setError('Authentication timeout. Please try logging in again.');
         setTimeout(() => navigateOnce('/'), 3000);
       }
-    }, 15000); // 15 second timeout - increased to allow PKCE exchange
+    };
 
-    // Listen for auth state changes
-    // Supabase v2 automatically exchanges OAuth codes for sessions
-    // and triggers this listener when complete
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state change:', event, session);
-
-      if (event === 'SIGNED_IN' && session) {
-        console.log('Authentication successful, redirecting...');
-        // Small delay to ensure session is fully persisted
-        setTimeout(() => navigateOnce('/dashboard'), 100);
-      } else if (event === 'SIGNED_OUT') {
-        setError('Authentication failed. Please try logging in again.');
-        setTimeout(() => navigateOnce('/'), 3000);
-      }
-    });
-
-    // Check if session already exists after a short delay
-    // This handles the case where the auth state change already fired
-    const checkSessionTimeout = setTimeout(async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session && !hasNavigated) {
-          console.log('Session found, redirecting...');
-          navigateOnce('/dashboard');
-        }
-      } catch (err) {
-        console.error('Error checking session:', err);
-      }
-    }, 2000); // Wait 2 seconds for PKCE exchange to complete
+    // Start polling
+    pollForSession();
 
     // Cleanup
     return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-      clearTimeout(checkSessionTimeout);
-      subscription.unsubscribe();
+      isMounted = false;
     };
   }, [navigate]);
 
