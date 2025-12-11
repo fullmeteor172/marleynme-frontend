@@ -71,7 +71,7 @@ export function PetsHomePage() {
   };
 
   const getStatusIcon = (status: string) => {
-    const iconClass = "w-4 h-4";
+    const iconClass = "w-3 h-3";
     switch (status) {
       case "pending_assignment":
         return <Clock className={iconClass} />;
@@ -196,67 +196,78 @@ export function PetsHomePage() {
 
         {requestsLoading ? (
           <Card>
-            <CardContent className="py-12 text-center text-muted-foreground">
+            <CardContent className="py-8 text-center text-muted-foreground text-sm">
               Loading service history...
             </CardContent>
           </Card>
         ) : !serviceRequests || serviceRequests.length === 0 ? (
           <Card>
-            <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground">
+            <CardContent className="py-8 text-center">
+              <p className="text-muted-foreground text-sm">
                 No service requests yet. Book a service for your pet to get started!
               </p>
             </CardContent>
           </Card>
         ) : (
-          <Card>
-            <CardContent className="p-0">
+          <Card className="overflow-hidden">
+            <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Service</TableHead>
-                    <TableHead>Pet</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Price</TableHead>
+                  <TableRow className="bg-muted/50 hover:bg-muted/50">
+                    <TableHead className="font-semibold text-xs uppercase tracking-wide h-10 px-4">Service</TableHead>
+                    <TableHead className="font-semibold text-xs uppercase tracking-wide h-10 px-4">Pet</TableHead>
+                    <TableHead className="font-semibold text-xs uppercase tracking-wide h-10 px-4">Date & Time</TableHead>
+                    <TableHead className="font-semibold text-xs uppercase tracking-wide h-10 px-4">Status</TableHead>
+                    <TableHead className="font-semibold text-xs uppercase tracking-wide h-10 px-4 text-right">Price</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {serviceRequests.map((request) => {
+                  {serviceRequests.map((request, index) => {
                     const pet = pets?.find((p) => p.id === request.pet_id);
                     const service = allServices?.find((s) => s.id === request.service_id);
                     return (
                       <TableRow
                         key={request.id}
-                        className="cursor-pointer hover:bg-muted/50"
+                        className={`cursor-pointer transition-colors hover:bg-primary/5 ${
+                          index % 2 === 1 ? 'bg-muted/20' : ''
+                        }`}
                         onClick={() =>
                           navigate(`/dashboard/service-requests/${request.id}`)
                         }
                       >
-                        <TableCell className="font-medium">
+                        <TableCell className="font-medium py-3 px-4">
                           {service?.name || "Unknown Service"}
                         </TableCell>
-                        <TableCell>{pet?.name || "Unknown"}</TableCell>
-                        <TableCell>
-                          {format(new Date(request.requested_datetime), "PPp")}
+                        <TableCell className="py-3 px-4 text-muted-foreground">
+                          {pet?.name || "Unknown"}
                         </TableCell>
-                        <TableCell>
-                          <Badge className={getStatusColor(request.status)}>
-                            <span className="flex items-center gap-1">
+                        <TableCell className="py-3 px-4 whitespace-nowrap">
+                          <div className="flex flex-col">
+                            <span className="text-sm">{format(new Date(request.requested_datetime), "MMM d, yyyy")}</span>
+                            <span className="text-xs text-muted-foreground">{format(new Date(request.requested_datetime), "h:mm a")}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-3 px-4">
+                          <Badge
+                            variant="secondary"
+                            className={`${getStatusColor(request.status)} text-xs font-medium px-2.5 py-0.5`}
+                          >
+                            <span className="flex items-center gap-1.5">
                               {getStatusIcon(request.status)}
                               {formatStatus(request.status)}
                             </span>
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right">
-                          {request.currency} {request.estimated_price.toFixed(2)}
+                        <TableCell className="py-3 px-4 text-right font-semibold whitespace-nowrap">
+                          {request.currency === 'INR' ? '₹' : request.currency}{' '}
+                          {request.estimated_price.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                         </TableCell>
                       </TableRow>
                     );
                   })}
                 </TableBody>
               </Table>
-            </CardContent>
+            </div>
           </Card>
         )}
       </div>

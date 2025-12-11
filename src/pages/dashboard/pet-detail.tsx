@@ -275,39 +275,48 @@ export function PetDetailPage() {
 
       {/* Available Services Card */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-primary" />
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Sparkles className="w-4 h-4 text-primary" />
             Available Services
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-sm">
             Services available for {speciesName === "Not specified" ? "your pet" : speciesName}s
           </CardDescription>
         </CardHeader>
         <CardContent>
           {availableServices.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">
+            <p className="text-muted-foreground text-center py-6 text-sm">
               No services available for this species yet
             </p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {availableServices.map(({ service, pricing }) => (
-                <Card key={service.id} className="border-2">
-                  <CardHeader>
-                    <CardTitle className="text-xl">{service.name}</CardTitle>
+                <div
+                  key={service.id}
+                  className="group relative rounded-xl border bg-card p-4 hover:shadow-md hover:border-primary/50 transition-all duration-200"
+                >
+                  {/* Service name and description */}
+                  <div className="mb-3">
+                    <h4 className="font-semibold text-base leading-tight">{service.name}</h4>
                     {service.description && (
-                      <CardDescription>{service.description}</CardDescription>
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                        {service.description}
+                      </p>
                     )}
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-3xl font-bold">
-                        {pricing.currency} {pricing.base_price.toFixed(2)}
+                  </div>
+
+                  {/* Price and action */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-xl font-bold text-primary">
+                        {pricing.currency === 'INR' ? '₹' : pricing.currency}{' '}
+                        {pricing.base_price.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                       </span>
-                      <span className="text-sm text-muted-foreground">base price</span>
                     </div>
                     <Button
-                      className="w-full"
+                      size="sm"
+                      className="shrink-0"
                       onClick={() =>
                         setBookingDialog({
                           open: true,
@@ -316,10 +325,10 @@ export function PetDetailPage() {
                         })
                       }
                     >
-                      Book Service
+                      Book
                     </Button>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               ))}
             </div>
           )}
