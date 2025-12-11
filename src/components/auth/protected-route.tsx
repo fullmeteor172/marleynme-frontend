@@ -127,6 +127,18 @@ export function ProtectedRoute({ children, requireOnboarding = true }: Protected
   // Quick check: if no stored session, redirect immediately
   const hasSession = hasStoredSession();
 
+  // Debug logging
+  console.log('ProtectedRoute render:', {
+    hasSession,
+    isInitialized,
+    isInitializing,
+    hasUser: !!user,
+    hasProfile: !!profile,
+    requireOnboarding,
+    isLoadingOnboarding,
+    hasOnboardingStatus: !!onboardingStatus,
+  });
+
   // Reset timeout on retry
   useEffect(() => {
     setIsTimedOut(false);
