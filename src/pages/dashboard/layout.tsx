@@ -58,7 +58,7 @@ export function DashboardLayout() {
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
         <Sidebar collapsible="icon">
-          <SidebarHeader className="border-b px-4 h-[56px] flex items-center group-data-[collapsible=icon]:justify-center">
+          <SidebarHeader className="border-b px-4 h-[56px] flex items-center">
             <div className="flex items-center gap-3">
               <Logo className="h-8 w-8 flex-shrink-0" />
               <span className="text-lg font-semibold group-data-[collapsible=icon]:hidden">Marley 'n' Me</span>
@@ -75,6 +75,7 @@ export function DashboardLayout() {
                     <SidebarMenuButton
                       onClick={() => navigate("/dashboard/pets")}
                       isActive={location.pathname.startsWith("/dashboard/pets")}
+                      className="data-[active=true]:bg-blue-500/10 data-[active=true]:text-blue-700 dark:data-[active=true]:text-blue-300"
                     >
                       <Home className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                       <span>Your Pets Home</span>
@@ -85,6 +86,7 @@ export function DashboardLayout() {
                     <SidebarMenuButton
                       onClick={() => navigate("/dashboard/adoption")}
                       isActive={location.pathname === "/dashboard/adoption"}
+                      className="data-[active=true]:bg-pink-500/10 data-[active=true]:text-pink-700 dark:data-[active=true]:text-pink-300"
                     >
                       <Heart className="w-4 h-4 text-pink-600 dark:text-pink-400" />
                       <span>Adoption Center</span>
@@ -96,6 +98,7 @@ export function DashboardLayout() {
                       <SidebarMenuButton
                         onClick={() => navigate("/dashboard/partner")}
                         isActive={location.pathname === "/dashboard/partner"}
+                        className="data-[active=true]:bg-purple-500/10 data-[active=true]:text-purple-700 dark:data-[active=true]:text-purple-300"
                       >
                         <Briefcase className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                         <span>Partner Portal</span>
@@ -108,6 +111,7 @@ export function DashboardLayout() {
                       <SidebarMenuButton
                         onClick={() => navigate("/dashboard/admin")}
                         isActive={location.pathname === "/dashboard/admin"}
+                        className="data-[active=true]:bg-red-500/10 data-[active=true]:text-red-700 dark:data-[active=true]:text-red-300"
                       >
                         <Shield className="w-4 h-4 text-red-600 dark:text-red-400" />
                         <span>Admin Portal</span>
@@ -127,6 +131,7 @@ export function DashboardLayout() {
                     <SidebarMenuButton
                       onClick={() => navigate("/dashboard/profile")}
                       isActive={location.pathname === "/dashboard/profile"}
+                      className="data-[active=true]:bg-green-500/10 data-[active=true]:text-green-700 dark:data-[active=true]:text-green-300"
                     >
                       <User className="w-4 h-4 text-green-600 dark:text-green-400" />
                       <span>User Profile</span>
@@ -137,6 +142,7 @@ export function DashboardLayout() {
                     <SidebarMenuButton
                       onClick={() => navigate("/dashboard/addresses")}
                       isActive={location.pathname === "/dashboard/addresses"}
+                      className="data-[active=true]:bg-orange-500/10 data-[active=true]:text-orange-700 dark:data-[active=true]:text-orange-300"
                     >
                       <MapPin className="w-4 h-4 text-orange-600 dark:text-orange-400" />
                       <span>Address Book</span>

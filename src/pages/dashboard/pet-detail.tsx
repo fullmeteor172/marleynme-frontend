@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { usePet, useDeletePet, useUploadPetAvatar, useSpecies, useBreeds } from "@/hooks/use-pets";
+import { useServices, useServicePricing } from "@/hooks/use-services";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -15,9 +16,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Edit, Trash2, Upload, PawPrint } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, Upload, PawPrint, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useRef } from "react";
+import { ServiceBookingDialog } from "@/components/booking/service-booking-dialog";
+import type { Service, ServiceSpecies } from "@/types";
 
 export function PetDetailPage() {
   const { petId } = useParams<{ petId: string }>();
@@ -25,14 +28,34 @@ export function PetDetailPage() {
   const { data: pet, isLoading } = usePet(petId!);
   const { data: allSpecies } = useSpecies();
   const { data: allBreeds } = useBreeds(pet?.species_id);
+  const { data: allServices } = useServices();
+  const { data: allPricing } = useServicePricing();
   const deletePet = useDeletePet();
   const uploadAvatar = useUploadPetAvatar(petId!);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [bookingDialog, setBookingDialog] = useState<{
+    open: boolean;
+    service: Service | null;
+    pricing: ServiceSpecies | null;
+  }>({
+    open: false,
+    service: null,
+    pricing: null,
+  });
 
   // Get species and breed names
   const speciesName = allSpecies?.find(s => s.id === pet?.species_id)?.name || "Not specified";
   const breedName = allBreeds?.find(b => b.id === pet?.breed_id)?.name || "Not specified";
+
+  // Get available services for this pet's species
+  const availableServices = allPricing
+    ?.filter(pricing => pricing.species_id === pet?.species_id && pricing.is_active)
+    .map(pricing => {
+      const service = allServices?.find(s => s.id === pricing.service_id);
+      return service ? { service, pricing } : null;
+    })
+    .filter((item): item is { service: Service; pricing: ServiceSpecies } => item !== null) || [];
 
   const handleDelete = async () => {
     if (!petId) return;
@@ -250,6 +273,59 @@ export function PetDetailPage() {
         </CardContent>
       </Card>
 
+      {/* Available Services Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-primary" />
+            Available Services
+          </CardTitle>
+          <CardDescription>
+            Services available for {speciesName === "Not specified" ? "your pet" : speciesName}s
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {availableServices.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">
+              No services available for this species yet
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {availableServices.map(({ service, pricing }) => (
+                <Card key={service.id} className="border-2">
+                  <CardHeader>
+                    <CardTitle className="text-xl">{service.name}</CardTitle>
+                    {service.description && (
+                      <CardDescription>{service.description}</CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl font-bold">
+                        {pricing.currency} {pricing.base_price.toFixed(2)}
+                      </span>
+                      <span className="text-sm text-muted-foreground">base price</span>
+                    </div>
+                    <Button
+                      className="w-full"
+                      onClick={() =>
+                        setBookingDialog({
+                          open: true,
+                          service,
+                          pricing,
+                        })
+                      }
+                    >
+                      Book Service
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Service History Card */}
       <Card>
         <CardHeader>
@@ -264,6 +340,19 @@ export function PetDetailPage() {
           </p>
         </CardContent>
       </Card>
+
+      {/* Booking Dialog */}
+      {bookingDialog.service && bookingDialog.pricing && (
+        <ServiceBookingDialog
+          open={bookingDialog.open}
+          onOpenChange={(open) =>
+            setBookingDialog({ open, service: null, pricing: null })
+          }
+          service={bookingDialog.service}
+          pricing={bookingDialog.pricing}
+          pet={pet}
+        />
+      )}
     </div>
   );
 }
