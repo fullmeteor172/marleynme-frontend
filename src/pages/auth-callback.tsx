@@ -7,6 +7,9 @@ export function AuthCallbackPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let hasNavigated = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
     // Check for errors in the URL
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const urlParams = new URLSearchParams(window.location.search);
@@ -18,11 +21,22 @@ export function AuthCallbackPage() {
       return;
     }
 
+    // Helper to navigate only once
+    const navigateOnce = (path: string) => {
+      if (!hasNavigated) {
+        hasNavigated = true;
+        if (timeoutId) clearTimeout(timeoutId);
+        navigate(path);
+      }
+    };
+
     // Set up a timeout to prevent infinite waiting
-    const timeout = setTimeout(() => {
-      setError('Authentication timeout. Please try logging in again.');
-      setTimeout(() => navigate('/'), 3000);
-    }, 10000); // 10 second timeout
+    timeoutId = setTimeout(() => {
+      if (!hasNavigated) {
+        setError('Authentication timeout. Please try logging in again.');
+        setTimeout(() => navigateOnce('/'), 3000);
+      }
+    }, 15000); // 15 second timeout - increased to allow PKCE exchange
 
     // Listen for auth state changes
     // Supabase v2 automatically exchanges OAuth codes for sessions
@@ -31,28 +45,33 @@ export function AuthCallbackPage() {
       console.log('Auth state change:', event, session);
 
       if (event === 'SIGNED_IN' && session) {
-        clearTimeout(timeout);
         console.log('Authentication successful, redirecting...');
-        navigate('/dashboard');
+        // Small delay to ensure session is fully persisted
+        setTimeout(() => navigateOnce('/dashboard'), 100);
       } else if (event === 'SIGNED_OUT') {
-        clearTimeout(timeout);
         setError('Authentication failed. Please try logging in again.');
-        setTimeout(() => navigate('/'), 3000);
+        setTimeout(() => navigateOnce('/'), 3000);
       }
     });
 
-    // Also check if there's already a session (in case the event already fired)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        clearTimeout(timeout);
-        console.log('Session found, redirecting...');
-        navigate('/dashboard');
+    // Check if session already exists after a short delay
+    // This handles the case where the auth state change already fired
+    const checkSessionTimeout = setTimeout(async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && !hasNavigated) {
+          console.log('Session found, redirecting...');
+          navigateOnce('/dashboard');
+        }
+      } catch (err) {
+        console.error('Error checking session:', err);
       }
-    });
+    }, 2000); // Wait 2 seconds for PKCE exchange to complete
 
     // Cleanup
     return () => {
-      clearTimeout(timeout);
+      if (timeoutId) clearTimeout(timeoutId);
+      clearTimeout(checkSessionTimeout);
       subscription.unsubscribe();
     };
   }, [navigate]);
