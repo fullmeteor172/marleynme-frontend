@@ -64,46 +64,65 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize auth - runs once on mount
   useEffect(() => {
-    // Prevent double initialization in React strict mode
-    if (isInitRef.current) return;
+    // Prevent double initialization only if already truly initialized
+    // Check the actual store state instead of just a ref
+    const state = useAuthStore.getState();
+    if (isInitRef.current && state.isInitialized) {
+      console.log('AuthProvider: Already initialized, skipping');
+      return;
+    }
+
+    if (isInitRef.current && !state.isInitialized) {
+      console.log('AuthProvider: Re-running initialization (strict mode second mount)');
+    }
+
     isInitRef.current = true;
 
     let mounted = true;
+    console.log('AuthProvider: Starting initialization...');
 
     const initialize = async () => {
       // Set a timeout to ensure we don't hang forever
       initTimeoutRef.current = setTimeout(() => {
         if (mounted) {
-          console.warn('Auth initialization timed out');
+          console.warn('AuthProvider: Initialization timed out, forcing completion');
           setInitializing(false);
           setInitialized(true);
         }
       }, INIT_TIMEOUT_MS);
 
       try {
+        console.log('AuthProvider: Calling getSession...');
         // Get session from Supabase (reads from localStorage first, then validates)
         const { data: { session }, error } = await supabase.auth.getSession();
 
         if (error) {
-          console.error('Error getting session:', error);
+          console.error('AuthProvider: Error getting session:', error);
         }
 
-        if (!mounted) return;
+        console.log('AuthProvider: Got session:', session ? 'Yes' : 'No', session?.user?.email);
+
+        if (!mounted) {
+          console.log('AuthProvider: Component unmounted, aborting');
+          return;
+        }
 
         // Update auth state
         setSession(session);
         setUser(session?.user ?? null);
 
         // Mark as initialized immediately - don't wait for profile
+        console.log('AuthProvider: Marking as initialized');
         setInitializing(false);
         setInitialized(true);
 
         // Fetch profile in background (non-blocking)
         if (session?.user) {
+          console.log('AuthProvider: Fetching profile...');
           fetchProfile();
         }
       } catch (error) {
-        console.error('Error initializing auth:', error);
+        console.error('AuthProvider: Error initializing auth:', error);
         if (mounted) {
           setInitializing(false);
           setInitialized(true);
@@ -122,10 +141,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
-      console.log('Auth state change:', event);
+      console.log('AuthProvider: Auth state change:', event, session?.user?.email);
 
       setSession(session);
       setUser(session?.user ?? null);
+
+      // Ensure we're marked as initialized when we get auth events
+      if (!useAuthStore.getState().isInitialized) {
+        console.log('AuthProvider: Forcing initialization on auth event');
+        setInitializing(false);
+        setInitialized(true);
+      }
 
       if (event === 'SIGNED_IN' && session?.user) {
         // Fetch profile after sign in
@@ -136,7 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         queryClient.clear();
       } else if (event === 'TOKEN_REFRESHED') {
         // Token refreshed - good, nothing special needed
-        console.log('Token refreshed successfully');
+        console.log('AuthProvider: Token refreshed successfully');
       }
     });
 
@@ -162,6 +188,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
+      console.log('AuthProvider: Cleaning up');
       mounted = false;
       if (initTimeoutRef.current) {
         clearTimeout(initTimeoutRef.current);
@@ -170,6 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       unsubscribeAuthError();
       unsubscribeSessionExpired();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      // Don't reset isInitRef here - we want to track across strict mode remounts
     };
   }, [
     setSession,
