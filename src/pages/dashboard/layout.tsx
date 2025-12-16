@@ -14,7 +14,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ModeToggle } from "@/components/ui/mode-toggle";
 import { useAuthStore } from "@/stores/auth-store";
 import { useNavigate } from "react-router-dom";
@@ -37,6 +37,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Dock, DockIcon } from "@/components/ui/dock";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 import { useState } from "react";
 
 export function DashboardLayout() {
@@ -44,6 +53,7 @@ export function DashboardLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [showContactDialog, setShowContactDialog] = useState(false);
+  const isMobile = useIsMobile();
 
   const roles = profile?.roles || [];
   const isAdmin = roles.includes("admin_ops") || roles.includes("admin_super");
@@ -251,6 +261,175 @@ export function DashboardLayout() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Mobile Dock Navigation */}
+      {isMobile && (
+        <div className="fixed bottom-4 left-0 right-0 z-50 md:hidden">
+          <TooltipProvider>
+            <Dock direction="middle" className="bg-background/80 dark:bg-background/90">
+              <DockIcon>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => navigate("/dashboard/pets")}
+                      aria-label="Your Pets Home"
+                      className={cn(
+                        buttonVariants({ variant: "ghost", size: "icon" }),
+                        "size-12 rounded-full",
+                        location.pathname.startsWith("/dashboard/pets") && "bg-blue-500/10"
+                      )}
+                    >
+                      <Home className={cn(
+                        "size-5",
+                        location.pathname.startsWith("/dashboard/pets")
+                          ? "text-blue-600 dark:text-blue-400"
+                          : "text-muted-foreground"
+                      )} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Your Pets Home</p>
+                  </TooltipContent>
+                </Tooltip>
+              </DockIcon>
+
+              <DockIcon>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => navigate("/dashboard/adoption")}
+                      aria-label="Adoption Center"
+                      className={cn(
+                        buttonVariants({ variant: "ghost", size: "icon" }),
+                        "size-12 rounded-full",
+                        location.pathname === "/dashboard/adoption" && "bg-pink-500/10"
+                      )}
+                    >
+                      <Heart className={cn(
+                        "size-5",
+                        location.pathname === "/dashboard/adoption"
+                          ? "text-pink-600 dark:text-pink-400"
+                          : "text-muted-foreground"
+                      )} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Adoption Center</p>
+                  </TooltipContent>
+                </Tooltip>
+              </DockIcon>
+
+              {isPartner && (
+                <DockIcon>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => navigate("/dashboard/partner")}
+                        aria-label="Partner Portal"
+                        className={cn(
+                          buttonVariants({ variant: "ghost", size: "icon" }),
+                          "size-12 rounded-full",
+                          location.pathname === "/dashboard/partner" && "bg-purple-500/10"
+                        )}
+                      >
+                        <Briefcase className={cn(
+                          "size-5",
+                          location.pathname === "/dashboard/partner"
+                            ? "text-purple-600 dark:text-purple-400"
+                            : "text-muted-foreground"
+                        )} />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Partner Portal</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </DockIcon>
+              )}
+
+              {isAdmin && (
+                <DockIcon>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => navigate("/dashboard/admin")}
+                        aria-label="Admin Portal"
+                        className={cn(
+                          buttonVariants({ variant: "ghost", size: "icon" }),
+                          "size-12 rounded-full",
+                          location.pathname === "/dashboard/admin" && "bg-red-500/10"
+                        )}
+                      >
+                        <Shield className={cn(
+                          "size-5",
+                          location.pathname === "/dashboard/admin"
+                            ? "text-red-600 dark:text-red-400"
+                            : "text-muted-foreground"
+                        )} />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Admin Portal</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </DockIcon>
+              )}
+
+              <DockIcon>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => navigate("/dashboard/profile")}
+                      aria-label="User Profile"
+                      className={cn(
+                        buttonVariants({ variant: "ghost", size: "icon" }),
+                        "size-12 rounded-full",
+                        location.pathname === "/dashboard/profile" && "bg-green-500/10"
+                      )}
+                    >
+                      <User className={cn(
+                        "size-5",
+                        location.pathname === "/dashboard/profile"
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-muted-foreground"
+                      )} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>User Profile</p>
+                  </TooltipContent>
+                </Tooltip>
+              </DockIcon>
+
+              <DockIcon>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => navigate("/dashboard/addresses")}
+                      aria-label="Address Book"
+                      className={cn(
+                        buttonVariants({ variant: "ghost", size: "icon" }),
+                        "size-12 rounded-full",
+                        location.pathname === "/dashboard/addresses" && "bg-orange-500/10"
+                      )}
+                    >
+                      <MapPin className={cn(
+                        "size-5",
+                        location.pathname === "/dashboard/addresses"
+                          ? "text-orange-600 dark:text-orange-400"
+                          : "text-muted-foreground"
+                      )} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Address Book</p>
+                  </TooltipContent>
+                </Tooltip>
+              </DockIcon>
+            </Dock>
+          </TooltipProvider>
+        </div>
+      )}
     </SidebarProvider>
   );
 }

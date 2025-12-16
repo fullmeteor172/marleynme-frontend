@@ -250,6 +250,11 @@ export function OnboardingPage() {
                     onChange={(e) =>
                       setData({ ...data, firstName: e.target.value })
                     }
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !isProcessing) {
+                        handleNext();
+                      }
+                    }}
                     className="mt-2"
                     autoFocus
                   />
@@ -263,6 +268,11 @@ export function OnboardingPage() {
                     onChange={(e) =>
                       setData({ ...data, lastName: e.target.value })
                     }
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !isProcessing) {
+                        handleNext();
+                      }
+                    }}
                     className="mt-2"
                   />
                 </div>
@@ -396,6 +406,11 @@ export function OnboardingPage() {
                       const value = e.target.value.replace(/\D/g, "");
                       if (value.length <= 10) {
                         setData({ ...data, phone: value });
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !isProcessing) {
+                        handleNext();
                       }
                     }}
                     className="flex-1"
