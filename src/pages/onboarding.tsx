@@ -118,7 +118,37 @@ export function OnboardingPage() {
           toast.error("Please enter a valid 10-digit phone number");
           return;
         }
-        await updateProfile.mutateAsync({ phone: `+91${data.phone}` });
+        const phoneWithPrefix = `+91${data.phone}`;
+        await updateProfile.mutateAsync({ phone: phoneWithPrefix });
+
+        // Create partner profile so interests can be added in the next step
+        // Partner profile requires: partner_type, display_name, city_id, contact_phone
+        try {
+          // Check if partner already exists
+          const existingPartner = await partnerService.getMyPartner();
+          if (!existingPartner) {
+            await partnerService.createPartner({
+              partner_type: 'individual',
+              display_name: `${data.firstName} ${data.lastName}`.trim(),
+              city_id: data.cityId,
+              contact_phone: phoneWithPrefix,
+            });
+          }
+        } catch (error: unknown) {
+          // If partner doesn't exist (404), create one
+          const isNotFound = error && typeof error === 'object' && 'status_code' in error && (error as { status_code: number }).status_code === 404;
+          if (isNotFound) {
+            await partnerService.createPartner({
+              partner_type: 'individual',
+              display_name: `${data.firstName} ${data.lastName}`.trim(),
+              city_id: data.cityId,
+              contact_phone: phoneWithPrefix,
+            });
+          } else {
+            console.error("Error checking/creating partner:", error);
+            // Continue anyway - interests will fail but user can update later
+          }
+        }
         setStep(5);
       } else if (step === 5) {
         // Save service interests if any selected

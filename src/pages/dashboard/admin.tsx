@@ -15,9 +15,10 @@ import {
   useUpdateService,
   useAddUserRole,
   useRemoveUserRole,
+  useUpdateServicePricing,
 } from '@/hooks/use-admin';
 import { useServices, useServicePricing } from '@/hooks/use-services';
-import { useSpecies, useBreeds } from '@/hooks/use-pets';
+import { useSpecies, useAllBreeds } from '@/hooks/use-pets';
 import { useCities } from '@/hooks/use-profile';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -60,10 +61,11 @@ import {
   Check,
   X,
   RefreshCw,
+  DollarSign,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import type { Profile, ServiceRequest, City, Species, Breed, Service, ProfileRole } from '@/types';
+import type { Profile, ServiceRequest, City, Species, Breed, Service, ProfileRole, ServiceSpecies } from '@/types';
 
 // Status color helpers
 const getStatusColor = (status: string) => {
@@ -92,8 +94,14 @@ function UsersTab() {
   const removeRole = useRemoveUserRole();
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
+  const [roleFilter, setRoleFilter] = useState<string>('all');
 
   const allRoles: ProfileRole[] = ['pet_parent', 'prospective_parent', 'service_partner', 'admin_ops', 'admin_super'];
+
+  const filteredUsers = users?.filter((user) => {
+    if (roleFilter === 'all') return true;
+    return user.roles?.includes(roleFilter as ProfileRole);
+  });
 
   const handleAddRole = async (role: ProfileRole) => {
     if (!selectedUser) return;
@@ -123,12 +131,26 @@ function UsersTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Users ({users?.length || 0})</h3>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Refresh
-        </Button>
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <h3 className="text-lg font-semibold">Users ({filteredUsers?.length || 0})</h3>
+        <div className="flex gap-2">
+          <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by role" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All roles</SelectItem>
+              {allRoles.map((role) => (
+                <SelectItem key={role} value={role}>
+                  {role.replace(/_/g, ' ')}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       <Card className="overflow-hidden">
@@ -145,7 +167,7 @@ function UsersTab() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users?.map((user, index) => (
+              {filteredUsers?.map((user, index) => (
                 <TableRow key={user.user_id} className={index % 2 === 1 ? 'bg-muted/20' : ''}>
                   <TableCell className="py-3 px-4 font-medium">
                     {user.first_name} {user.last_name}
@@ -225,8 +247,8 @@ function UsersTab() {
 
 // Service Requests Tab
 function ServiceRequestsTab() {
-  const [statusFilter, setStatusFilter] = useState<string>('');
-  const { data: requests, isLoading, refetch } = useAdminServiceRequests(statusFilter || undefined);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const { data: requests, isLoading, refetch } = useAdminServiceRequests(statusFilter === 'all' ? undefined : statusFilter);
   const { data: allServices } = useServices();
   const updateRequest = useUpdateAdminServiceRequest();
   const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
@@ -273,7 +295,7 @@ function ServiceRequestsTab() {
               <SelectValue placeholder="All statuses" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All statuses</SelectItem>
+              <SelectItem value="all">All statuses</SelectItem>
               {statuses.map((status) => (
                 <SelectItem key={status} value={status}>
                   {formatStatus(status)}
@@ -345,6 +367,9 @@ function ServiceRequestsTab() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Update Service Request</DialogTitle>
+            <DialogDescription>
+              Update the status and add admin notes for this service request.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -485,6 +510,9 @@ function CitiesTab() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editingCity ? 'Edit City' : 'Add City'}</DialogTitle>
+            <DialogDescription>
+              {editingCity ? 'Update city details below.' : 'Add a new city to the system.'}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -626,6 +654,9 @@ function SpeciesTab() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editingSpecies ? 'Edit Species' : 'Add Species'}</DialogTitle>
+            <DialogDescription>
+              {editingSpecies ? 'Update species details below.' : 'Add a new species to the system.'}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -662,7 +693,7 @@ function SpeciesTab() {
 
 // Reference Data - Breeds Tab
 function BreedsTab() {
-  const { data: breeds, isLoading, refetch } = useBreeds();
+  const { data: breeds, isLoading, refetch } = useAllBreeds();
   const { data: species } = useSpecies();
   const createBreed = useCreateBreed();
   const updateBreed = useUpdateBreed();
@@ -757,6 +788,9 @@ function BreedsTab() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editingBreed ? 'Edit Breed' : 'Add Breed'}</DialogTitle>
+            <DialogDescription>
+              {editingBreed ? 'Update breed details below.' : 'Add a new breed to the system.'}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -929,6 +963,9 @@ function ServicesTab() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editingService ? 'Edit Service' : 'Add Service'}</DialogTitle>
+            <DialogDescription>
+              {editingService ? 'Update service details below.' : 'Add a new service to the system.'}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -971,6 +1008,147 @@ function ServicesTab() {
             </Button>
             <Button onClick={handleSubmit} disabled={createService.isPending || updateService.isPending}>
               {editingService ? 'Update' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// Service Pricing Tab
+function ServicePricingTab() {
+  const { data: pricing, isLoading, refetch } = useServicePricing();
+  const { data: services } = useServices();
+  const { data: species } = useSpecies();
+  const updatePricing = useUpdateServicePricing();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingPricing, setEditingPricing] = useState<ServiceSpecies | null>(null);
+  const [formData, setFormData] = useState({ base_price: 0, currency: 'INR', is_active: true });
+
+  const handleSubmit = async () => {
+    if (!editingPricing) return;
+    try {
+      await updatePricing.mutateAsync({
+        pricingId: editingPricing.id,
+        data: formData,
+      });
+      toast.success('Pricing updated');
+      setDialogOpen(false);
+      setEditingPricing(null);
+      refetch();
+    } catch {
+      toast.error('Failed to update pricing');
+    }
+  };
+
+  if (isLoading) {
+    return <div className="py-8 text-center text-muted-foreground">Loading pricing...</div>;
+  }
+
+  // Group pricing by service
+  const pricingByService = pricing?.reduce((acc, p) => {
+    const service = services?.find((s) => s.id === p.service_id);
+    const serviceName = service?.name || 'Unknown';
+    if (!acc[serviceName]) acc[serviceName] = [];
+    acc[serviceName].push(p);
+    return acc;
+  }, {} as Record<string, ServiceSpecies[]>);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Service Pricing ({pricing?.length || 0})</h3>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>
+          <RefreshCw className="w-4 h-4" />
+        </Button>
+      </div>
+
+      <p className="text-sm text-muted-foreground">
+        Manage pricing for services by species. Edit existing pricing configurations below.
+      </p>
+
+      <div className="space-y-6">
+        {Object.entries(pricingByService || {}).map(([serviceName, pricings]) => (
+          <Card key={serviceName}>
+            <CardContent className="pt-6">
+              <h4 className="font-semibold mb-4">{serviceName}</h4>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {pricings.map((p) => {
+                  const sp = species?.find((s) => s.id === p.species_id);
+                  return (
+                    <div
+                      key={p.id}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                    >
+                      <div>
+                        <p className="font-medium">{sp?.name || 'Unknown'}</p>
+                        <p className="text-lg font-semibold text-green-600">
+                          {p.currency === 'INR' ? '₹' : p.currency}
+                          {p.base_price.toLocaleString('en-IN')}
+                        </p>
+                        <Badge variant={p.is_active ? 'default' : 'secondary'} className="mt-1">
+                          {p.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setEditingPricing(p);
+                          setFormData({
+                            base_price: p.base_price,
+                            currency: p.currency,
+                            is_active: p.is_active,
+                          });
+                          setDialogOpen(true);
+                        }}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Pricing</DialogTitle>
+            <DialogDescription>
+              Update the base price for this service-species combination.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Base Price (₹)</Label>
+              <Input
+                type="number"
+                value={formData.base_price}
+                onChange={(e) => setFormData({ ...formData, base_price: Number(e.target.value) })}
+                placeholder="Enter price"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="is_active_pricing"
+                checked={formData.is_active}
+                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+              />
+              <Label htmlFor="is_active_pricing">Active</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={updatePricing.isPending}>
+              {updatePricing.isPending ? 'Updating...' : 'Update'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1046,6 +1224,13 @@ export function AdminPortalPage() {
                 <Briefcase className="w-4 h-4 mr-2" />
                 Services
               </TabsTrigger>
+              <TabsTrigger
+                value="pricing"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
+              >
+                <DollarSign className="w-4 h-4 mr-2" />
+                Pricing
+              </TabsTrigger>
             </TabsList>
 
             <div className="p-6">
@@ -1071,6 +1256,10 @@ export function AdminPortalPage() {
 
               <TabsContent value="services" className="mt-0">
                 <ServicesTab />
+              </TabsContent>
+
+              <TabsContent value="pricing" className="mt-0">
+                <ServicePricingTab />
               </TabsContent>
             </div>
           </Tabs>
