@@ -153,7 +153,7 @@ function UsersTab() {
         </div>
       </div>
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden py-0">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -309,7 +309,7 @@ function ServiceRequestsTab() {
         </div>
       </div>
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden py-0">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -458,7 +458,7 @@ function CitiesTab() {
         </Button>
       </div>
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden py-0">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -611,7 +611,7 @@ function SpeciesTab() {
         </Button>
       </div>
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden py-0">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -740,7 +740,7 @@ function BreedsTab() {
         </Button>
       </div>
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden py-0">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -892,7 +892,7 @@ function ServicesTab() {
         </Button>
       </div>
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden py-0">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>

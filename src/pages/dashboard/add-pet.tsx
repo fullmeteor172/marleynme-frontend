@@ -234,9 +234,22 @@ export function AddPetPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, approx_age_years: e.target.value })
                 }
+                onBlur={(e) => {
+                  const value = parseFloat(e.target.value);
+                  if (!isNaN(value) && value > 0) {
+                    let rounded;
+                    if (value < 0.5) {
+                      rounded = 0.5;
+                    } else {
+                      // Round to nearest 0.5
+                      rounded = Math.round(value * 2) / 2;
+                    }
+                    setFormData({ ...formData, approx_age_years: rounded.toString() });
+                  }
+                }}
                 className="mt-2"
               />
-              <p className="text-xs text-muted-foreground mt-1">Age in years</p>
+              <p className="text-xs text-muted-foreground mt-1">Age in years (auto-rounds to nearest 0.5)</p>
             </div>
 
             {/* Notes */}

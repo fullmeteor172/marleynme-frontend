@@ -152,8 +152,27 @@ export function UserProfilePage() {
             <div className="space-y-2">
               <Label htmlFor="phone">Phone</Label>
               <div className="flex gap-2">
-                <div className="flex items-center gap-2 px-3 py-2 border rounded-md bg-muted text-sm font-medium min-w-[80px]">
-                  <span className="text-lg">🇮🇳</span>
+                <div className="flex items-center gap-2 px-3 border rounded-md bg-muted text-sm font-medium h-10">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 24" className="w-6 h-4 flex-shrink-0">
+                    <rect width="36" height="24" fill="#FF9933"/>
+                    <rect width="36" height="16" y="8" fill="#fff"/>
+                    <rect width="36" height="8" y="16" fill="#138808"/>
+                    <g fill="#000080">
+                      <circle cx="18" cy="12" r="3.5" fill="none" stroke="#000080" strokeWidth="0.5"/>
+                      {[...Array(24)].map((_, i) => (
+                        <line
+                          key={i}
+                          x1="18"
+                          y1="12"
+                          x2="18"
+                          y2="8.5"
+                          stroke="#000080"
+                          strokeWidth="0.4"
+                          transform={`rotate(${i * 15} 18 12)`}
+                        />
+                      ))}
+                    </g>
+                  </svg>
                   <span>+91</span>
                 </div>
                 <Input

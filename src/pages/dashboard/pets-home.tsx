@@ -272,7 +272,7 @@ export function PetsHomePage() {
             })}
           </div>
         ) : (
-          <Card className="overflow-hidden">
+          <Card className="overflow-hidden py-0">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>

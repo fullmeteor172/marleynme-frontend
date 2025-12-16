@@ -1,4 +1,4 @@
-import { MapPin, Plus, Trash2 } from "lucide-react";
+import { MapPin, Plus, Trash2, Edit, Home } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAddresses, useCreateAddress, useDeleteAddress } from "@/hooks/use-addresses";
+import { useAddresses, useCreateAddress, useDeleteAddress, useUpdateAddress } from "@/hooks/use-addresses";
 import { useCities } from "@/hooks/use-profile";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -41,7 +41,9 @@ export function AddressBookPage() {
   const { data: cities } = useCities();
   const createAddress = useCreateAddress();
   const deleteAddress = useDeleteAddress();
+  const updateAddress = useUpdateAddress();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     label: "",
     line1: "",
@@ -61,17 +63,34 @@ export function AddressBookPage() {
     }
 
     try {
-      await createAddress.mutateAsync({
-        label: formData.label || "Home",
-        line1: formData.line1,
-        line2: formData.line2 || undefined,
-        landmark: formData.landmark || undefined,
-        city_id: formData.city_id,
-        locality: formData.locality || undefined,
-        pincode: formData.pincode || undefined,
-      });
-      toast.success("Address added successfully");
+      if (editingAddress) {
+        await updateAddress.mutateAsync({
+          addressId: editingAddress,
+          data: {
+            label: formData.label || undefined,
+            line1: formData.line1,
+            line2: formData.line2 || undefined,
+            landmark: formData.landmark || undefined,
+            city_id: formData.city_id,
+            locality: formData.locality || undefined,
+            pincode: formData.pincode || undefined,
+          },
+        });
+        toast.success("Address updated successfully");
+      } else {
+        await createAddress.mutateAsync({
+          label: formData.label || "Home",
+          line1: formData.line1,
+          line2: formData.line2 || undefined,
+          landmark: formData.landmark || undefined,
+          city_id: formData.city_id,
+          locality: formData.locality || undefined,
+          pincode: formData.pincode || undefined,
+        });
+        toast.success("Address added successfully");
+      }
       setIsDialogOpen(false);
+      setEditingAddress(null);
       setFormData({
         label: "",
         line1: "",
@@ -82,7 +101,7 @@ export function AddressBookPage() {
         pincode: "",
       });
     } catch {
-      toast.error("Failed to add address");
+      toast.error(editingAddress ? "Failed to update address" : "Failed to add address");
     }
   };
 
@@ -126,9 +145,9 @@ export function AddressBookPage() {
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Add New Address</DialogTitle>
+              <DialogTitle>{editingAddress ? "Edit Address" : "Add New Address"}</DialogTitle>
               <DialogDescription>
-                Add a new address to your address book
+                {editingAddress ? "Update your address details below" : "Add a new address to your address book"}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit}>
@@ -210,8 +229,10 @@ export function AddressBookPage() {
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit" disabled={createAddress.isPending}>
-                  {createAddress.isPending ? "Adding..." : "Add Address"}
+                <Button type="submit" disabled={createAddress.isPending || updateAddress.isPending}>
+                  {createAddress.isPending || updateAddress.isPending
+                    ? (editingAddress ? "Updating..." : "Adding...")
+                    : (editingAddress ? "Update Address" : "Add Address")}
                 </Button>
               </DialogFooter>
             </form>
@@ -236,24 +257,76 @@ export function AddressBookPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {addresses.map((address) => (
-            <Card key={address.id}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      {address.label || "Address"}
+            <Card key={address.id} className="group hover:shadow-md transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  {/* Icon */}
+                  <div className="flex-shrink-0">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                      {address.label?.toLowerCase() === "home" ? (
+                        <Home className="w-6 h-6 text-primary" />
+                      ) : (
+                        <MapPin className="w-6 h-6 text-primary" />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h3 className="font-semibold text-lg">
+                        {address.label || "Address"}
+                      </h3>
                       {address.is_default && (
                         <Badge variant="secondary" className="text-xs">
                           Default
                         </Badge>
                       )}
-                    </CardTitle>
+                    </div>
+
+                    <div className="text-sm space-y-1 text-muted-foreground">
+                      <p className="font-medium text-foreground">{address.line1}</p>
+                      {address.line2 && <p>{address.line2}</p>}
+                      {address.landmark && (
+                        <p className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />
+                          <span>Near {address.landmark}</span>
+                        </p>
+                      )}
+                      <p className="pt-1">
+                        {address.locality && `${address.locality}, `}
+                        {getCityName(address.city_id)}
+                        {address.pincode && ` - ${address.pincode}`}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
+
+                  {/* Actions */}
+                  <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => {
+                        setEditingAddress(address.id);
+                        setFormData({
+                          label: address.label || "",
+                          line1: address.line1,
+                          line2: address.line2 || "",
+                          landmark: address.landmark || "",
+                          city_id: address.city_id,
+                          locality: address.locality || "",
+                          pincode: address.pincode || "",
+                        });
+                        setIsDialogOpen(true);
+                      }}
+                    >
+                      <Edit className="w-4 h-4 text-muted-foreground" />
+                    </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <Trash2 className="w-4 h-4" />
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Trash2 className="w-4 h-4 text-destructive" />
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
@@ -275,18 +348,6 @@ export function AddressBookPage() {
                       </AlertDialogContent>
                     </AlertDialog>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-sm space-y-1">
-                  <p>{address.line1}</p>
-                  {address.line2 && <p>{address.line2}</p>}
-                  {address.landmark && <p className="text-muted-foreground">Near {address.landmark}</p>}
-                  <p>
-                    {address.locality && `${address.locality}, `}
-                    {getCityName(address.city_id)}
-                    {address.pincode && ` - ${address.pincode}`}
-                  </p>
                 </div>
               </CardContent>
             </Card>
