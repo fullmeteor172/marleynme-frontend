@@ -1,10 +1,19 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { usePet, useDeletePet, useUploadPetAvatar, useSpecies, useBreeds } from "@/hooks/use-pets";
 import { useServices, useServicePricing } from "@/hooks/use-services";
+import { useServiceRequests } from "@/hooks/use-service-requests";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,10 +25,18 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Edit, Trash2, Upload, PawPrint, Sparkles } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, Upload, PawPrint, Sparkles, Clock, CheckCircle2, XCircle, AlertCircle, Loader2, Crown, Dog, Calendar as CalIcon } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { useState, useRef } from "react";
+import { format } from "date-fns";
 import { ServiceBookingDialog } from "@/components/booking/service-booking-dialog";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { Service, ServiceSpecies } from "@/types";
 
 export function PetDetailPage() {
@@ -30,10 +47,12 @@ export function PetDetailPage() {
   const { data: allBreeds } = useBreeds(pet?.species_id);
   const { data: allServices } = useServices();
   const { data: allPricing } = useServicePricing();
+  const { data: serviceRequests, isLoading: requestsLoading } = useServiceRequests();
   const deletePet = useDeletePet();
   const uploadAvatar = useUploadPetAvatar(petId!);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const isMobile = useIsMobile();
   const [bookingDialog, setBookingDialog] = useState<{
     open: boolean;
     service: Service | null;
@@ -48,6 +67,20 @@ export function PetDetailPage() {
   const speciesName = allSpecies?.find(s => s.id === pet?.species_id)?.name || "Not specified";
   const breedName = allBreeds?.find(b => b.id === pet?.breed_id)?.name || "Not specified";
 
+  // Filter service requests for this pet
+  const petServiceRequests = serviceRequests?.filter(req => req.pet_id === petId) || [];
+
+  // Separate upcoming and past services
+  const now = new Date();
+  const upcomingServices = petServiceRequests.filter(req => {
+    const reqDate = new Date(req.requested_datetime);
+    return reqDate >= now && !['completed', 'cancelled'].includes(req.status);
+  });
+  const pastServices = petServiceRequests.filter(req => {
+    const reqDate = new Date(req.requested_datetime);
+    return reqDate < now || ['completed', 'cancelled'].includes(req.status);
+  });
+
   // Get available services for this pet's species
   const availableServices = allPricing
     ?.filter(pricing => pricing.species_id === pet?.species_id && pricing.is_active)
@@ -56,6 +89,48 @@ export function PetDetailPage() {
       return service ? { service, pricing } : null;
     })
     .filter((item): item is { service: Service; pricing: ServiceSpecies } => item !== null) || [];
+
+  // Status helpers
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      pending_assignment: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
+      assigned: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
+      upcoming: "bg-purple-500/10 text-purple-700 dark:text-purple-400",
+      in_progress: "bg-orange-500/10 text-orange-700 dark:text-orange-400",
+      awaiting_completion: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-400",
+      completed: "bg-green-500/10 text-green-700 dark:text-green-400",
+      cancelled: "bg-red-500/10 text-red-700 dark:text-red-400",
+    };
+    return colors[status] || "bg-gray-500/10 text-gray-700 dark:text-gray-400";
+  };
+
+  const formatStatus = (status: string) => {
+    return status
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+
+  const getStatusIcon = (status: string) => {
+    const iconClass = "w-3 h-3";
+    switch (status) {
+      case "pending_assignment":
+        return <Clock className={iconClass} />;
+      case "assigned":
+      case "upcoming":
+        return <AlertCircle className={iconClass} />;
+      case "in_progress":
+        return <Loader2 className={`${iconClass} animate-spin`} />;
+      case "awaiting_completion":
+        return <AlertCircle className={iconClass} />;
+      case "completed":
+        return <CheckCircle2 className={iconClass} />;
+      case "cancelled":
+        return <XCircle className={iconClass} />;
+      default:
+        return <AlertCircle className={iconClass} />;
+    }
+  };
 
   const handleDelete = async () => {
     if (!petId) return;
@@ -178,100 +253,87 @@ export function PetDetailPage() {
         </div>
       </div>
 
-      {/* Pet Info Card */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-start gap-6">
-            <div className="relative group">
-              <Avatar className="w-32 h-32">
-                <AvatarImage src={pet.profile_photo_url || undefined} />
-                <AvatarFallback className={`${getColorFromName(pet.name)} text-white text-4xl`}>
-                  <PawPrint className="w-16 h-16" />
-                </AvatarFallback>
-              </Avatar>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-              >
-                <Upload className="w-8 h-8 text-white" />
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleAvatarUpload}
-              />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <CardTitle className="text-3xl">{pet.name}</CardTitle>
-                {pet.is_primary_owner && (
-                  <Badge variant="secondary">Primary Owner</Badge>
-                )}
+      {/* Pet Info Card - Combined and Compact */}
+      <TooltipProvider>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex flex-col sm:flex-row gap-6">
+              {/* Avatar Section */}
+              <div className="relative group flex-shrink-0 mx-auto sm:mx-0">
+                <Avatar className="w-28 h-28 ring-4 ring-offset-4 ring-primary/20">
+                  <AvatarImage src={pet.profile_photo_url || undefined} />
+                  <AvatarFallback className={`${getColorFromName(pet.name)} text-white text-3xl`}>
+                    <PawPrint className="w-14 h-14" />
+                  </AvatarFallback>
+                </Avatar>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                >
+                  <Upload className="w-6 h-6 text-white" />
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarUpload}
+                />
               </div>
-              <CardDescription className="text-lg">
-                {pet.sex && <span className="capitalize">{pet.sex}</span>}
-                {pet.approx_age_years && (
-                  <span>
-                    {pet.sex && " • "}
-                    {pet.approx_age_years} year{pet.approx_age_years !== 1 ? "s" : ""} old
-                  </span>
-                )}
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-      </Card>
 
-      {/* Pet Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Pet Information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Species</div>
-              <div className="mt-1">{speciesName}</div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Breed</div>
-              <div className="mt-1">{breedName}</div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Sex</div>
-              <div className="mt-1 capitalize">{pet.sex || "Not specified"}</div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Approximate Age</div>
-              <div className="mt-1">
-                {pet.approx_age_years
-                  ? `${pet.approx_age_years} year${pet.approx_age_years !== 1 ? "s" : ""}`
-                  : "Not specified"}
+              {/* Info Section */}
+              <div className="flex-1 text-center sm:text-left">
+                <div className="flex items-center justify-center sm:justify-start gap-2 mb-3">
+                  <h1 className="text-2xl font-bold">{pet.name}</h1>
+                  {pet.is_primary_owner && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Crown className="w-5 h-5 text-amber-500" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Primary Owner</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+
+                {/* Quick Info Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Dog className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <span className="truncate">{speciesName}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <PawPrint className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <span className="truncate">{breedName}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-lg">{pet.sex === 'male' ? '♂' : pet.sex === 'female' ? '♀' : '?'}</span>
+                    <span className="capitalize">{pet.sex || "Unknown"}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <CalIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <span>{pet.approx_age_years ? `${pet.approx_age_years}y old` : "Age unknown"}</span>
+                  </div>
+                </div>
+
+                {/* Notes Section */}
+                {pet.notes && (
+                  <div className="bg-muted/50 rounded-lg p-3 text-sm">
+                    <p className="text-muted-foreground whitespace-pre-wrap">{pet.notes}</p>
+                  </div>
+                )}
+
+                {/* Meta Info */}
+                <div className="flex flex-wrap gap-4 mt-3 text-xs text-muted-foreground">
+                  <span>Added {new Date(pet.created_at).toLocaleDateString()}</span>
+                  <span>Updated {new Date(pet.updated_at).toLocaleDateString()}</span>
+                </div>
               </div>
             </div>
-            <div className="md:col-span-2">
-              <div className="text-sm font-medium text-muted-foreground">Notes</div>
-              <div className="mt-1 whitespace-pre-wrap">
-                {pet.notes || "No notes added"}
-              </div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Created</div>
-              <div className="mt-1">
-                {new Date(pet.created_at).toLocaleDateString()}
-              </div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Last Updated</div>
-              <div className="mt-1">
-                {new Date(pet.updated_at).toLocaleDateString()}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </TooltipProvider>
 
       {/* Available Services Card */}
       <Card>
@@ -335,18 +397,196 @@ export function PetDetailPage() {
         </CardContent>
       </Card>
 
+      {/* Upcoming Services Card */}
+      {upcomingServices.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-primary" />
+              Upcoming Services
+            </CardTitle>
+            <CardDescription>
+              Scheduled services for {pet.name}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isMobile ? (
+              <div className="space-y-3">
+                {upcomingServices.map((request) => {
+                  const service = allServices?.find((s) => s.id === request.service_id);
+                  return (
+                    <div
+                      key={request.id}
+                      className="p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => navigate(`/dashboard/service-requests/${request.id}`)}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-semibold">{service?.name || "Unknown Service"}</h4>
+                        <Badge
+                          variant="secondary"
+                          className={`${getStatusColor(request.status)} text-xs`}
+                        >
+                          <span className="flex items-center gap-1">
+                            {getStatusIcon(request.status)}
+                            {formatStatus(request.status)}
+                          </span>
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {format(new Date(request.requested_datetime), "MMM d, yyyy 'at' h:mm a")}
+                      </p>
+                      <p className="text-sm font-semibold text-green-600 mt-1">
+                        {request.currency === 'INR' ? '₹' : request.currency} {request.estimated_price.toLocaleString('en-IN')}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="font-semibold text-xs uppercase tracking-wide">Service</TableHead>
+                      <TableHead className="font-semibold text-xs uppercase tracking-wide">Date & Time</TableHead>
+                      <TableHead className="font-semibold text-xs uppercase tracking-wide">Status</TableHead>
+                      <TableHead className="font-semibold text-xs uppercase tracking-wide text-right">Price</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {upcomingServices.map((request, index) => {
+                      const service = allServices?.find((s) => s.id === request.service_id);
+                      return (
+                        <TableRow
+                          key={request.id}
+                          className={`cursor-pointer hover:bg-primary/5 ${index % 2 === 1 ? 'bg-muted/20' : ''}`}
+                          onClick={() => navigate(`/dashboard/service-requests/${request.id}`)}
+                        >
+                          <TableCell className="font-medium">{service?.name || "Unknown"}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span className="text-sm">{format(new Date(request.requested_datetime), "MMM d, yyyy")}</span>
+                              <span className="text-xs text-muted-foreground">{format(new Date(request.requested_datetime), "h:mm a")}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className={`${getStatusColor(request.status)} text-xs`}>
+                              <span className="flex items-center gap-1">
+                                {getStatusIcon(request.status)}
+                                {formatStatus(request.status)}
+                              </span>
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-semibold">
+                            {request.currency === 'INR' ? '₹' : request.currency} {request.estimated_price.toLocaleString('en-IN')}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Service History Card */}
       <Card>
         <CardHeader>
           <CardTitle>Service History</CardTitle>
           <CardDescription>
-            View all services booked for {pet.name}
+            {pastServices.length > 0
+              ? `Past services for ${pet.name}`
+              : `View all services booked for ${pet.name}`}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground text-center py-8">
-            No services booked yet
-          </p>
+          {requestsLoading ? (
+            <p className="text-muted-foreground text-center py-8">
+              Loading service history...
+            </p>
+          ) : pastServices.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">
+              No service history yet. Book a service above to get started!
+            </p>
+          ) : isMobile ? (
+            <div className="space-y-3">
+              {pastServices.map((request) => {
+                const service = allServices?.find((s) => s.id === request.service_id);
+                return (
+                  <div
+                    key={request.id}
+                    className="p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => navigate(`/dashboard/service-requests/${request.id}`)}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-semibold">{service?.name || "Unknown Service"}</h4>
+                      <Badge
+                        variant="secondary"
+                        className={`${getStatusColor(request.status)} text-xs`}
+                      >
+                        <span className="flex items-center gap-1">
+                          {getStatusIcon(request.status)}
+                          {formatStatus(request.status)}
+                        </span>
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {format(new Date(request.requested_datetime), "MMM d, yyyy 'at' h:mm a")}
+                    </p>
+                    <p className="text-sm font-semibold mt-1">
+                      {request.currency === 'INR' ? '₹' : request.currency} {request.estimated_price.toLocaleString('en-IN')}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="font-semibold text-xs uppercase tracking-wide">Service</TableHead>
+                    <TableHead className="font-semibold text-xs uppercase tracking-wide">Date & Time</TableHead>
+                    <TableHead className="font-semibold text-xs uppercase tracking-wide">Status</TableHead>
+                    <TableHead className="font-semibold text-xs uppercase tracking-wide text-right">Price</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pastServices.map((request, index) => {
+                    const service = allServices?.find((s) => s.id === request.service_id);
+                    return (
+                      <TableRow
+                        key={request.id}
+                        className={`cursor-pointer hover:bg-primary/5 ${index % 2 === 1 ? 'bg-muted/20' : ''}`}
+                        onClick={() => navigate(`/dashboard/service-requests/${request.id}`)}
+                      >
+                        <TableCell className="font-medium">{service?.name || "Unknown"}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="text-sm">{format(new Date(request.requested_datetime), "MMM d, yyyy")}</span>
+                            <span className="text-xs text-muted-foreground">{format(new Date(request.requested_datetime), "h:mm a")}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className={`${getStatusColor(request.status)} text-xs`}>
+                            <span className="flex items-center gap-1">
+                              {getStatusIcon(request.status)}
+                              {formatStatus(request.status)}
+                            </span>
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-semibold">
+                          {request.currency === 'INR' ? '₹' : request.currency} {request.estimated_price.toLocaleString('en-IN')}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -96,3 +96,11 @@ export const useBreeds = (speciesId?: string) => {
     enabled: !!speciesId,
   });
 };
+
+export const useAllBreeds = () => {
+  return useQuery({
+    queryKey: ['breeds', 'all'],
+    queryFn: () => petService.getBreeds(),
+    staleTime: 1000 * 60 * 30, // 30 minutes
+  });
+};

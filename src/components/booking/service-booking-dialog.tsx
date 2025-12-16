@@ -71,16 +71,29 @@ export function ServiceBookingDialog({
   const createAddress = useCreateAddress();
   const createServiceRequest = useCreateServiceRequest();
 
-  // Initialize phone number from profile
+  // Generate time slots from 9 AM to 10 PM in 30-min increments
+  const timeSlots = Array.from({ length: 27 }, (_, i) => {
+    const hour = Math.floor(i / 2) + 9;
+    const minute = (i % 2) * 30;
+    const hour12 = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+    const period = hour >= 12 ? 'PM' : 'AM';
+    const value = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+    const label = `${hour12}:${minute.toString().padStart(2, '0')} ${period}`;
+    return { value, label };
+  });
+
+  // Initialize phone number from profile (extract digits after +91)
   useState(() => {
     if (profile?.phone) {
-      setPhoneNumber(profile.phone);
+      const phone = profile.phone.replace(/^\+91\s*/, '').replace(/\D/g, '');
+      setPhoneNumber(phone);
     }
   });
 
   const resetForm = () => {
     setStep(1);
-    setPhoneNumber(profile?.phone || "");
+    const phone = profile?.phone?.replace(/^\+91\s*/, '').replace(/\D/g, '') || '';
+    setPhoneNumber(phone);
     setSelectedAddressId("");
     setShowAddAddress(false);
     setSelectedDate(undefined);
@@ -177,6 +190,8 @@ export function ServiceBookingDialog({
     selectedDateTime.setHours(hours, minutes);
 
     try {
+      // Ensure phone has +91 prefix
+      const formattedPhone = phoneNumber.startsWith('+91') ? phoneNumber : `+91${phoneNumber}`;
       await createServiceRequest.mutateAsync({
         pet_id: pet.id,
         service_id: service.id,
@@ -184,7 +199,7 @@ export function ServiceBookingDialog({
         requested_delivery_mode: "at_home_client",
         customer_address_id: selectedAddressId,
         requested_datetime: selectedDateTime.toISOString(),
-        customer_contact_phone: phoneNumber,
+        customer_contact_phone: formattedPhone,
         customer_notes: notes || undefined,
       });
       toast.success("Service request created successfully!");
@@ -223,23 +238,9 @@ export function ServiceBookingDialog({
         <DialogHeader>
           <DialogTitle>Book {service.name}</DialogTitle>
           <DialogDescription>
-            For {pet.name} • {pricing.currency} {pricing.base_price.toFixed(2)}
+            For {pet.name} • {pricing.currency === 'INR' ? '₹' : pricing.currency} {pricing.base_price.toLocaleString('en-IN')}
           </DialogDescription>
         </DialogHeader>
-
-        {/* Progress Indicator */}
-        <div className="flex items-center justify-center gap-2 py-4">
-          {[1, 2, 3, 4, 5].map((s) => (
-            <div
-              key={s}
-              className={cn(
-                "h-2 rounded-full transition-all",
-                s === step ? "w-8 bg-primary" : "w-2 bg-muted",
-                s < step && "bg-primary/50"
-              )}
-            />
-          ))}
-        </div>
 
         <div className="space-y-6">
           <h3 className="text-lg font-semibold">{getStepTitle()}</h3>
@@ -249,13 +250,24 @@ export function ServiceBookingDialog({
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="phone">Contact Phone Number *</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="+91 9876543210"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                />
+                <div className="flex">
+                  <div className="flex items-center px-3 bg-muted border border-r-0 rounded-l-md text-muted-foreground text-sm">
+                    +91
+                  </div>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="9876543210"
+                    value={phoneNumber}
+                    onChange={(e) => {
+                      // Only allow digits, max 10
+                      const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      setPhoneNumber(value);
+                    }}
+                    className="rounded-l-none"
+                    maxLength={10}
+                  />
+                </div>
                 <p className="text-sm text-muted-foreground">
                   We'll use this number to contact you about this service request
                 </p>
@@ -428,12 +440,19 @@ export function ServiceBookingDialog({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="time">Select Time *</Label>
-                <Input
-                  id="time"
-                  type="time"
-                  value={selectedTime}
-                  onChange={(e) => setSelectedTime(e.target.value)}
-                />
+                <Select value={selectedTime} onValueChange={setSelectedTime}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a time (9 AM - 10 PM)" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[200px]">
+                    {timeSlots.map((slot) => (
+                      <SelectItem key={slot.value} value={slot.value}>
+                        {slot.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Available between 9:00 AM and 10:00 PM</p>
               </div>
               <p className="text-sm text-muted-foreground">
                 Services must be scheduled at least 48 hours (2 days) in advance
@@ -481,7 +500,7 @@ export function ServiceBookingDialog({
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Contact Phone</p>
-                  <p className="font-medium">{phoneNumber}</p>
+                  <p className="font-medium">+91 {phoneNumber}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Service Address</p>
@@ -512,13 +531,27 @@ export function ServiceBookingDialog({
                 )}
                 <div className="pt-3 border-t">
                   <p className="text-sm text-muted-foreground">Estimated Price</p>
-                  <p className="text-2xl font-bold">
-                    {pricing.currency} {pricing.base_price.toFixed(2)}
+                  <p className="text-2xl font-bold text-green-600">
+                    {pricing.currency === 'INR' ? '₹' : pricing.currency} {pricing.base_price.toLocaleString('en-IN')}
                   </p>
                 </div>
               </div>
             </div>
           )}
+        </div>
+
+        {/* Progress Indicator */}
+        <div className="flex items-center justify-center gap-2 py-4">
+          {[1, 2, 3, 4, 5].map((s) => (
+            <div
+              key={s}
+              className={cn(
+                "h-2 rounded-full transition-all",
+                s === step ? "w-8 bg-primary" : "w-2 bg-muted",
+                s < step && "bg-primary/50"
+              )}
+            />
+          ))}
         </div>
 
         {/* Navigation Buttons */}
