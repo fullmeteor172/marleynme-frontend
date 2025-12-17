@@ -1,3 +1,9 @@
+# API subdomain - reverse proxy to backend container
+api.marleynme.in {
+    reverse_proxy http://46.62.252.202:8000
+}
+
+# Main frontend application
 marleynme.in, www.marleynme.in {
     root * /usr/share/caddy
     file_server
