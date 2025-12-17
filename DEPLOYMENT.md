@@ -1,5 +1,34 @@
 # Deployment Guide - MarleyNMe Frontend
 
+## 🚨 IMPORTANT: Local vs Production
+
+### Running Locally (Development)
+
+Use `docker-compose.local.yaml` to run on your machine:
+
+```bash
+# Stop any running containers first
+docker compose down
+
+# Run locally (accessible at http://localhost:3000)
+docker compose -f docker-compose.local.yaml up -d --build
+```
+
+**Why?** The production `docker-compose.yaml` uses SSL certificates for `marleynme.in` which won't work on localhost.
+
+### Running on Production (Hetzner VPS)
+
+Use the regular `docker-compose.yaml` on your server:
+
+```bash
+# On your VPS
+docker compose up -d --build
+```
+
+**Why?** This configuration gets SSL certificates for your domain and runs on ports 80/443.
+
+---
+
 ## Quick Deployment to Hetzner VPS
 
 This guide will help you deploy your frontend to a Hetzner VPS with Cloudflare DNS.
@@ -167,9 +196,25 @@ docker-compose up -d --build
 
 ## Troubleshooting
 
+### SSL Error on Localhost (SSL_ERROR_INTERNAL_ERROR_ALERT)
+
+**Problem**: Getting SSL errors when accessing http://127.0.0.1 or http://localhost
+
+**Solution**: You're using the production docker-compose.yaml locally! Use the local version instead:
+
+```bash
+# Stop the production container
+docker compose down
+
+# Use the local configuration
+docker compose -f docker-compose.local.yaml up -d --build
+
+# Access at http://localhost:3000
+```
+
 ### Container won't start
 ```bash
-docker-compose logs
+docker compose logs
 ```
 
 ### Port 80/443 already in use
