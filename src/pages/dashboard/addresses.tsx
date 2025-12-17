@@ -1,5 +1,5 @@
 import { MapPin, Plus, Trash2, Edit, Home } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +31,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAddresses, useCreateAddress, useDeleteAddress, useUpdateAddress } from "@/hooks/use-addresses";
+import {
+  useAddresses,
+  useCreateAddress,
+  useDeleteAddress,
+  useUpdateAddress,
+} from "@/hooks/use-addresses";
 import { useCities } from "@/hooks/use-profile";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -101,7 +106,9 @@ export function AddressBookPage() {
         pincode: "",
       });
     } catch {
-      toast.error(editingAddress ? "Failed to update address" : "Failed to add address");
+      toast.error(
+        editingAddress ? "Failed to update address" : "Failed to add address"
+      );
     }
   };
 
@@ -115,7 +122,7 @@ export function AddressBookPage() {
   };
 
   const getCityName = (cityId: string) => {
-    const city = cities?.find(c => c.id === cityId);
+    const city = cities?.find((c) => c.id === cityId);
     return city ? `${city.name}, ${city.state}` : cityId;
   };
 
@@ -145,9 +152,13 @@ export function AddressBookPage() {
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>{editingAddress ? "Edit Address" : "Add New Address"}</DialogTitle>
+              <DialogTitle>
+                {editingAddress ? "Edit Address" : "Add New Address"}
+              </DialogTitle>
               <DialogDescription>
-                {editingAddress ? "Update your address details below" : "Add a new address to your address book"}
+                {editingAddress
+                  ? "Update your address details below"
+                  : "Add a new address to your address book"}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit}>
@@ -158,7 +169,9 @@ export function AddressBookPage() {
                     id="label"
                     placeholder="Home"
                     value={formData.label}
-                    onChange={(e) => setFormData({ ...formData, label: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, label: e.target.value })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -167,7 +180,9 @@ export function AddressBookPage() {
                     id="line1"
                     placeholder="123 Main Street, Apartment 4B"
                     value={formData.line1}
-                    onChange={(e) => setFormData({ ...formData, line1: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, line1: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -177,7 +192,9 @@ export function AddressBookPage() {
                     id="line2"
                     placeholder="Building name, Floor, etc."
                     value={formData.line2}
-                    onChange={(e) => setFormData({ ...formData, line2: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, line2: e.target.value })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -186,7 +203,9 @@ export function AddressBookPage() {
                     id="landmark"
                     placeholder="Near City Mall"
                     value={formData.landmark}
-                    onChange={(e) => setFormData({ ...formData, landmark: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, landmark: e.target.value })
+                    }
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -194,7 +213,9 @@ export function AddressBookPage() {
                     <Label htmlFor="city_id">City *</Label>
                     <Select
                       value={formData.city_id}
-                      onValueChange={(value) => setFormData({ ...formData, city_id: value })}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, city_id: value })
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select a city" />
@@ -214,7 +235,9 @@ export function AddressBookPage() {
                       id="locality"
                       placeholder="Downtown"
                       value={formData.locality}
-                      onChange={(e) => setFormData({ ...formData, locality: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, locality: e.target.value })
+                      }
                     />
                   </div>
                 </div>
@@ -224,15 +247,24 @@ export function AddressBookPage() {
                     id="pincode"
                     placeholder="500001"
                     value={formData.pincode}
-                    onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, pincode: e.target.value })
+                    }
                   />
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit" disabled={createAddress.isPending || updateAddress.isPending}>
+                <Button
+                  type="submit"
+                  disabled={createAddress.isPending || updateAddress.isPending}
+                >
                   {createAddress.isPending || updateAddress.isPending
-                    ? (editingAddress ? "Updating..." : "Adding...")
-                    : (editingAddress ? "Update Address" : "Add Address")}
+                    ? editingAddress
+                      ? "Updating..."
+                      : "Adding..."
+                    : editingAddress
+                    ? "Update Address"
+                    : "Add Address"}
                 </Button>
               </DialogFooter>
             </form>
@@ -257,11 +289,14 @@ export function AddressBookPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {addresses.map((address) => (
-            <Card key={address.id} className="group hover:shadow-md transition-shadow">
+            <Card
+              key={address.id}
+              className="group hover:shadow-md transition-shadow"
+            >
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   {/* Icon */}
-                  <div className="flex-shrink-0">
+                  <div className="shrink-0">
                     <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                       {address.label?.toLowerCase() === "home" ? (
                         <Home className="w-6 h-6 text-primary" />
@@ -285,7 +320,9 @@ export function AddressBookPage() {
                     </div>
 
                     <div className="text-sm space-y-1 text-muted-foreground">
-                      <p className="font-medium text-foreground">{address.line1}</p>
+                      <p className="font-medium text-foreground">
+                        {address.line1}
+                      </p>
                       {address.line2 && <p>{address.line2}</p>}
                       {address.landmark && (
                         <p className="flex items-center gap-1">
@@ -333,7 +370,8 @@ export function AddressBookPage() {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Delete Address?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Are you sure you want to delete this address? This action cannot be undone.
+                            Are you sure you want to delete this address? This
+                            action cannot be undone.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

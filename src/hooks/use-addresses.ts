@@ -1,10 +1,10 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { addressService } from '@/services/address-service';
-import type { CreateAddressRequest, PetAddressUsage } from '@/types';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { addressService } from "@/services/address-service";
+import type { CreateAddressRequest, PetAddressUsage } from "@/types";
 
 export const useAddresses = () => {
   return useQuery({
-    queryKey: ['addresses'],
+    queryKey: ["addresses"],
     queryFn: addressService.getAddresses,
   });
 };
@@ -13,21 +13,26 @@ export const useCreateAddress = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateAddressRequest) => addressService.createAddress(data),
+    mutationFn: (data: CreateAddressRequest) =>
+      addressService.createAddress(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['addresses'] });
+      queryClient.invalidateQueries({ queryKey: ["addresses"] });
     },
   });
 };
 
-export const useUpdateAddress = (addressId: string) => {
+export const useUpdateAddress = () => {
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: (data: Partial<CreateAddressRequest>) =>
-      addressService.updateAddress(addressId, data),
+    mutationFn: ({
+      addressId,
+      data,
+    }: {
+      addressId: string;
+      data: Partial<CreateAddressRequest>;
+    }) => addressService.updateAddress(addressId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['addresses'] });
+      queryClient.invalidateQueries({ queryKey: ["addresses"] });
     },
   });
 };
@@ -38,7 +43,7 @@ export const useDeleteAddress = () => {
   return useMutation({
     mutationFn: (addressId: string) => addressService.deleteAddress(addressId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['addresses'] });
+      queryClient.invalidateQueries({ queryKey: ["addresses"] });
     },
   });
 };
@@ -57,7 +62,7 @@ export const useLinkPetToAddress = (petId: string) => {
       isPrimary?: boolean;
     }) => addressService.linkPetToAddress(petId, addressId, usage, isPrimary),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pet-addresses', petId] });
+      queryClient.invalidateQueries({ queryKey: ["pet-addresses", petId] });
     },
   });
 };
