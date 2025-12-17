@@ -60,7 +60,7 @@ export function UserProfilePage() {
       await updateProfile.mutateAsync({
         first_name: formData.firstName,
         last_name: formData.lastName,
-        phone: formData.phone ? `+91${formData.phone}` : undefined,
+        phone: formData.phone && formData.phone.trim() ? `+91${formData.phone}` : undefined,
         city_id: formData.cityId,
         locality: formData.locality,
         pincode: formData.pincode,
