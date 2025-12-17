@@ -11,6 +11,9 @@ node_modules
 dist
 dist-ssr
 *.local
+# But include our Docker local config files
+!Caddyfile.local
+!docker-compose.local.yaml
 
 # Editor directories and files
 .vscode/*
