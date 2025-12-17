@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  marleynme:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+    volumes:
+      - ./Caddyfile.local:/etc/caddy/Caddyfile
